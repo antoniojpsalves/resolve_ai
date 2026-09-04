@@ -5,7 +5,7 @@ Diagrama entidade-relacionamento do schema Prisma (`prisma/schema.prisma`).
 ```mermaid
 erDiagram
     USER ||--o{ OCCURRENCE : "cria (createdBy)"
-    USER ||--o{ OCCURRENCE : "é responsável (assignedTo)"
+    USER |o--o{ OCCURRENCE : "é responsável (assignedTo)"
     USER ||--o{ COMMENT : "escreve"
     USER ||--o{ STATUS_HISTORY : "registra alteração"
     CATEGORY ||--o{ OCCURRENCE : "classifica"
