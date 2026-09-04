@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Resolve Aí
 
-## Getting Started
+Plataforma de gestão de ocorrências. Permite registrar, acompanhar e resolver
+ocorrências, com autenticação de usuários e coleta de feedback.
 
-First, run the development server:
+
+## Stack
+
+- **Framework:** Next.js 15 (App Router, fullstack — front-end e API na mesma
+  aplicação)
+- **Linguagem:** TypeScript
+- **Estilo/UI:** Tailwind CSS + shadcn/ui (estilo `new-york`, cor base `slate`)
+- **Banco de dados:** PostgreSQL
+- **ORM:** Prisma
+- **Autenticação:** NextAuth
+- **Testes:** Vitest (unitário/integração) + Playwright (e2e)
+- **Deploy:** Vercel (aplicação) + Neon (Postgres gerenciado)
+
+## Pré-requisitos
+
+- Node.js 22+ (ou compatível — ver nota abaixo)
+- npm
+- Docker e Docker Compose (para subir Postgres localmente)
+
+> **Nota sobre versão do Node:** o `docker-compose.yml` usa a imagem
+> `node:22-alpine` para o serviço `app`. Localmente, o projeto foi
+> desenvolvido e validado também com Node 26; use a versão que preferir,
+> desde que compatível com Next.js 15.
+
+## Como subir com Docker Compose
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
+docker compose up --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Isso sobe três serviços:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `db`: PostgreSQL 16 na porta `5432` (banco `resolve_ai`), com volume
+  nomeado persistente.
+- `db-test`: PostgreSQL 16 na porta `5433` (banco `resolve_ai_test`), sem
+  persistência (dados em tmpfs), usado pelos testes de integração.
+- `app`: a aplicação Next.js, na porta `3000`, rodando `npm ci`,
+  `npx prisma generate` e `npm run dev` dentro do container.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Atalho equivalente via npm: `npm run dev:docker`.
 
-## Learn More
+## Como rodar localmente (sem Docker para o app)
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+cp .env.example .env
+docker compose up -d db db-test   # só os bancos
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Acesse [http://localhost:3000](http://localhost:3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts disponíveis
 
-## Deploy on Vercel
+| Script                 | Descrição                                 |
+| ---------------------- | ----------------------------------------- |
+| `npm run dev`          | Sobe o servidor de desenvolvimento        |
+| `npm run build`        | Build de produção                         |
+| `npm run start`        | Sobe o build de produção                  |
+| `npm run lint`         | ESLint                                    |
+| `npm run typecheck`    | Checagem de tipos (`tsc --noEmit`)        |
+| `npm run format`       | Formata o código com Prettier             |
+| `npm run format:check` | Verifica formatação sem alterar arquivos  |
+| `npm run test`         | Testes unitários/integração (Vitest)      |
+| `npm run test:watch`   | Vitest em modo watch                      |
+| `npm run test:cov`     | Testes com cobertura                      |
+| `npm run test:e2e`     | Testes end-to-end (Playwright)            |
+| `npm run dev:docker`   | Sobe tudo via `docker compose up --build` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Variáveis de ambiente
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver `.env.example` para o conjunto completo. Resumo:
+
+| Variável               | Descrição                                                       |
+| ---------------------- | --------------------------------------------------------------- |
+| `DATABASE_URL`         | String de conexão do Postgres principal (usada pela app/Prisma) |
+| `DATABASE_URL_TEST`    | String de conexão do Postgres de testes (`db-test`)             |
+| `AUTH_SECRET`          | Segredo do NextAuth (gere com `openssl rand -base64 32`)        |
+| `AUTH_URL`             | URL base da aplicação para o NextAuth                           |
+| `NEXT_PUBLIC_APP_NAME` | Nome público da aplicação, exposto ao client                    |
+
+## Estrutura do projeto
+
+```
+src/app/(auth)/        rotas públicas de autenticação
+src/app/(app)/         rotas autenticadas da aplicação
+src/app/api/v1/        rotas de API (REST)
+src/modules/           módulos de domínio (occurrence, identity, feedback),
+                        cada um com domain/application/infra
+src/core/               código transversal (errors, http, db)
+src/ui/                 componentes de UI compartilhados fora do shadcn
+src/components/ui/      componentes gerados pelo shadcn/ui
+tests/unit/             testes unitários (Vitest)
+tests/integration/      testes de integração (Vitest)
+tests/e2e/              testes end-to-end (Playwright)
+docs/adr/               Architecture Decision Records
+```
+
+## Usuários de seed
+
+
+## Ambiente público
+
