@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    volumes:
+      - resolve_ai_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: resolve
+      POSTGRES_PASSWORD: resolve
+      POSTGRES_DB: resolve_ai
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U resolve']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-test:
+    image: postgres:16-alpine
+    ports:
+      - '5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: resolve
+      POSTGRES_PASSWORD: resolve
+      POSTGRES_DB: resolve_ai_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U resolve']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npx prisma generate && npm run dev"
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  resolve_ai_db:
+  node_modules:
