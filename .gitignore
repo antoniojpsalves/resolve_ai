@@ -11,7 +11,9 @@
 !.yarn/versions
 
 # testing
-/coverage
+/coverage/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -23,6 +25,7 @@
 # misc
 .DS_Store
 *.pem
+/blob-storage/
 
 # debug
 npm-debug.log*
@@ -31,6 +34,8 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+.env
+.env*.local
 .env*
 
 # vercel
