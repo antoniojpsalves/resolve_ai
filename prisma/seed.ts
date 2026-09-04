@@ -22,7 +22,6 @@ import { hashPassword } from '../src/modules/identity/infra/password';
 const prisma = new PrismaClient();
 
 const SEED_NOW = new Date('2026-09-01T12:00:00.000Z');
-const SEED_YEAR = SEED_NOW.getUTCFullYear();
 
 // --- PRNG determinístico (mulberry32) ---------------------------------
 function mulberry32(seed: number) {
@@ -135,11 +134,13 @@ const CONTENT_BY_CATEGORY: Record<string, ContentTemplate[]> = {
   limpeza: [
     {
       title: 'Lixo acumulado na lixeira comum',
-      description: 'O lixo não está sendo recolhido com a frequência adequada e está se acumulando.',
+      description:
+        'O lixo não está sendo recolhido com a frequência adequada e está se acumulando.',
     },
     {
       title: 'Corredor sujo após obra',
-      description: 'Restos de material de obra ficaram espalhados pelo corredor e não foram limpos.',
+      description:
+        'Restos de material de obra ficaram espalhados pelo corredor e não foram limpos.',
     },
     {
       title: 'Vidros da portaria sujos',
@@ -173,14 +174,14 @@ const CONTENT_BY_CATEGORY: Record<string, ContentTemplate[]> = {
     },
     {
       title: 'Porta do elevador demorando para fechar',
-      description:
-        'A porta do elevador demora muito além do normal para fechar, atrasando o uso.',
+      description: 'A porta do elevador demora muito além do normal para fechar, atrasando o uso.',
     },
   ],
   'areas-comuns': [
     {
       title: 'Banco quebrado na área de lazer',
-      description: 'Um dos bancos da área de lazer está com a estrutura quebrada, oferecendo risco.',
+      description:
+        'Um dos bancos da área de lazer está com a estrutura quebrada, oferecendo risco.',
     },
     {
       title: 'Churrasqueira com defeito',
@@ -209,7 +210,8 @@ const CONTENT_BY_CATEGORY: Record<string, ContentTemplate[]> = {
   infraestrutura: [
     {
       title: 'Rachadura na parede da garagem',
-      description: 'Foi identificada uma rachadura na parede da garagem que parece estar aumentando.',
+      description:
+        'Foi identificada uma rachadura na parede da garagem que parece estar aumentando.',
     },
     {
       title: 'Infiltração no teto do subsolo',
@@ -523,13 +525,18 @@ async function main() {
   // tempo, como aconteceria em produção.
   drafts.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-  const createdOccurrences: { id: string; status: OccurrenceStatus; resolvedAt: Date | null; createdAt: Date; createdById: string }[] =
-    [];
+  const createdOccurrences: {
+    id: string;
+    status: OccurrenceStatus;
+    resolvedAt: Date | null;
+    createdAt: Date;
+    createdById: string;
+  }[] = [];
 
   for (let i = 0; i < drafts.length; i += 1) {
     const draft = drafts[i];
     const sequence = i + 1;
-    const code = buildOccurrenceCode(draft.createdAt.getUTCFullYear() || SEED_YEAR, sequence);
+    const code = buildOccurrenceCode(draft.createdAt.getUTCFullYear(), sequence);
     const category = categories.get(draft.categorySlug);
     if (!category) {
       throw new Error(`Categoria não encontrada para slug ${draft.categorySlug}`);
