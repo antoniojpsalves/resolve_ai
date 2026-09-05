@@ -14,6 +14,17 @@ import {
 /** Quantas vezes o use-case tenta um novo `code` antes de desistir. */
 const MAX_SEQUENCE_ATTEMPTS = 5;
 
+/**
+ * `imageUrl` aceita tanto uma URL absoluta (`https://...`, o que o Vercel
+ * Blob devolve em produção — ver `infra/blob-file-storage.ts`) quanto um
+ * caminho relativo iniciado por `/` (o que o storage local devolve em
+ * desenvolvimento/Docker — `/api/v1/uploads/<key>`, servido por
+ * `GET /api/v1/uploads/[...key]`). `z.string().url()` sozinho rejeitaria a
+ * segunda forma, que é exatamente o valor real devolvido pelo upload em
+ * desenvolvimento.
+ */
+const IMAGE_URL_PATTERN = /^(?:https?:\/\/\S+|\/\S+)$/;
+
 export const createOccurrenceSchema = z
   .object({
     title: z.string().trim().min(1, 'O título é obrigatório'),
@@ -22,7 +33,7 @@ export const createOccurrenceSchema = z
     locationLabel: z.string().trim().min(1, 'A localização é obrigatória'),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
-    imageUrl: z.string().trim().url('URL de imagem inválida').optional(),
+    imageUrl: z.string().trim().regex(IMAGE_URL_PATTERN, 'URL de imagem inválida').optional(),
     imageKey: z.string().trim().min(1).optional(),
   })
   .strip();

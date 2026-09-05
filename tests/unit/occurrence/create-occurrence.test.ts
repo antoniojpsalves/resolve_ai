@@ -56,6 +56,16 @@ describe('createOccurrenceSchema', () => {
     expect(parsed.success).toBe(true);
   });
 
+  it('aceita imageUrl relativa — o formato devolvido pelo upload em storage local', () => {
+    const parsed = createOccurrenceSchema.safeParse({
+      ...validInput,
+      imageUrl: '/api/v1/uploads/325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
+      imageKey: '325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
   it('descarta campos desconhecidos (ex.: status/priority enviados pelo cliente)', () => {
     const parsed = createOccurrenceSchema.parse({ ...validInput, status: 'RESOLVIDA' });
 
