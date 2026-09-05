@@ -12,6 +12,30 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/core/**', 'src/modules/**'],
+      thresholds: {
+        // Plano §7: domain/ é o argumento mais forte da arquitetura e exige
+        // ≥80% de cobertura — hoje está em 100% (só `user.ts`/`protocol.ts`
+        // têm código executável; `role.ts` é só tipo, sem runtime).
+        'src/modules/**/domain/**': {
+          statements: 80,
+          branches: 80,
+          functions: 80,
+          lines: 80,
+        },
+        // Alvo real hoje (calibrado após as correções desta onda): a média de
+        // `src/modules/**` é puxada para baixo por
+        // `identity/infra/prisma-user-repository.ts` (0%), que depende de um
+        // Postgres real e será coberto por teste de integração, não unitário
+        // — fora do escopo desta correção. domain/ e application/ estão em
+        // 100%; o valor abaixo é a cobertura real do diretório inteiro, para
+        // não regredir, não uma meta artificialmente baixa.
+        'src/modules/**': {
+          statements: 71,
+          branches: 49,
+          functions: 69,
+          lines: 71,
+        },
+      },
     },
   },
 });
