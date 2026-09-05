@@ -27,6 +27,9 @@
 *.pem
 /blob-storage/
 
+# uploads locais (Tarefa 3, dia 2) — nunca versionados, ver infra/local-file-storage.ts
+/.storage/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
