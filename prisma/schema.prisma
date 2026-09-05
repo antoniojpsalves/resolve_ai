@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SOLICITANTE
+  GESTOR
+}
+
+enum OccurrenceStatus {
+  ABERTA
+  EM_ANALISE
+  EM_ATENDIMENTO
+  RESOLVIDA
+  CANCELADA
+}
+
+enum Priority {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(SOLICITANTE)
+  createdAt    DateTime @default(now())
+
+  created       Occurrence[]    @relation("createdBy")
+  assigned      Occurrence[]    @relation("assignedTo")
+  comments      Comment[]
+  statusChanges StatusHistory[]
+}
+
+model Category {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  slug        String       @unique
+  active      Boolean      @default(true)
+  occurrences Occurrence[]
+}
+
+model Occurrence {
+  id          String           @id @default(cuid())
+  code        String           @unique // protocolo: OC-2026-000123
+  title       String
+  description String
+  status      OccurrenceStatus @default(ABERTA)
+  priority    Priority         @default(MEDIA)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  locationLabel String // texto livre: "Bloco B, garagem"
+  latitude      Float?
+  longitude     Float?
+
+  imageUrl String?
+  imageKey String?
+
+  createdById  String
+  createdBy    User    @relation("createdBy", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("assignedTo", fields: [assignedToId], references: [id])
+
+  resolutionNote String? // "solução aplicada"
+  resolvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  history  StatusHistory[]
+  comments Comment[]
+  rating   Rating?
+
+  @@index([status, priority, categoryId])
+  @@index([createdById])
+}
+
+model StatusHistory {
+  id           String            @id @default(cuid())
+  occurrenceId String
+  occurrence   Occurrence        @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  fromStatus   OccurrenceStatus? // null = criação
+  toStatus     OccurrenceStatus
+  note         String? // "observação da alteração"
+  changedById  String
+  changedBy    User              @relation(fields: [changedById], references: [id])
+  createdAt    DateTime          @default(now())
+
+  @@index([occurrenceId, createdAt])
+}
+
+model Comment {
+  id           String     @id @default(cuid())
+  occurrenceId String
+  occurrence   Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User       @relation(fields: [authorId], references: [id])
+  body         String
+  createdAt    DateTime   @default(now())
+}
+
+model Rating {
+  id           String     @id @default(cuid())
+  occurrenceId String     @unique
+  occurrence   Occurrence @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  score        Int // 1..5
+  comment      String?
+  createdAt    DateTime   @default(now())
+}
