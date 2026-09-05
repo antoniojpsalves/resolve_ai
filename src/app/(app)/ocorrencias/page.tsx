@@ -1,16 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { requireSession } from '@/core/http/auth-guards';
+import { requireSessionOrRedirect } from '@/core/http/auth-guards';
 
 export const metadata = {
   title: 'Ocorrências · Resolve Aí',
 };
 
 /**
- * Server Component protegido. Ainda sem listagem: a consulta real, os filtros e
- * a paginação entram depois. Nenhum dado fictício é exibido aqui.
+ * Server Component protegido. Ainda sem listagem: a consulta real, os filtros
+ * e a paginação são um passo futuro. Nenhum dado fictício é exibido aqui.
  */
 export default async function OcorrenciasPage() {
-  const session = await requireSession();
+  const session = await requireSessionOrRedirect();
 
   return (
     <section className="space-y-6">
@@ -24,7 +24,9 @@ export default async function OcorrenciasPage() {
       <Card>
         <CardHeader>
           <CardTitle>Nenhuma ocorrência ainda</CardTitle>
-          <CardDescription>A listagem chega em breve.</CardDescription>
+          <CardDescription>
+            Suas ocorrências aparecerão aqui assim que forem registradas.
+          </CardDescription>
         </CardHeader>
         <CardContent className="text-muted-foreground text-sm">
           Esta tela já está protegida por sessão e pronta para receber os dados.
