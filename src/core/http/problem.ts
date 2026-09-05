@@ -57,7 +57,12 @@ function appErrorToProblem(error: AppError): ProblemDetails {
     problem.detail = error.detail;
   }
 
-  return { ...problem, ...error.extras };
+  // Os membros de extensão entram PRIMEIRO: `type`, `title`, `status` e `detail`
+  // são reservados pelo RFC 7807 e não podem ser sobrescritos por um `extras`.
+  // Deixar `extras` por último permitiria, por exemplo, `{ status: 200 }` mudar o
+  // status HTTP em `problemResponse` — ou um valor fora de 200-599 fazer o
+  // construtor de `Response` lançar `RangeError` dentro do próprio tratador de erros.
+  return { ...error.extras, ...problem };
 }
 
 function unknownErrorToProblem(): ProblemDetails {
