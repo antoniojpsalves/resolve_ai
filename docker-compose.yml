@@ -34,7 +34,7 @@ services:
   app:
     image: node:24-alpine
     working_dir: /app
-    command: sh -c "npm ci && npx prisma generate && npm run dev"
+    command: sh -c "npm ci && npx prisma generate && npx prisma migrate deploy && npm run dev"
     ports:
       - '3000:3000'
     volumes:
@@ -54,6 +54,8 @@ services:
       DATABASE_URL_TEST: postgresql://resolve:resolve@db-test:5432/resolve_ai_test?schema=public
     depends_on:
       db:
+        condition: service_healthy
+      db-test:
         condition: service_healthy
 
 volumes:
