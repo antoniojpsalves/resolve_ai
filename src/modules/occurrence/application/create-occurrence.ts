@@ -17,13 +17,22 @@ const MAX_SEQUENCE_ATTEMPTS = 5;
 /**
  * `imageUrl` aceita tanto uma URL absoluta (`https://...`, o que o Vercel
  * Blob devolve em produção — ver `infra/blob-file-storage.ts`) quanto um
- * caminho relativo iniciado por `/` (o que o storage local devolve em
- * desenvolvimento/Docker — `/api/v1/uploads/<key>`, servido por
+ * caminho relativo iniciado por uma única barra (o que o storage local
+ * devolve em desenvolvimento/Docker — `/api/v1/uploads/<key>`, servido por
  * `GET /api/v1/uploads/[...key]`). `z.string().url()` sozinho rejeitaria a
  * segunda forma, que é exatamente o valor real devolvido pelo upload em
  * desenvolvimento.
+ *
+ * O ramo relativo exige `/` seguida de algo que **não** é outra `/`
+ * (`\/(?!\/)`) — sem isso, `//evil.com/x.png` também casaria (a primeira
+ * barra satisfaz `\/`, o resto satisfaz `\S+`), e isso é uma URL
+ * protocol-relative de verdade: um navegador resolve `src="//evil.com/x.png"`
+ * como `https://evil.com/x.png`. Hoje o valor só é guardado e devolvido, mas
+ * a UI renderiza `<img src={imageUrl}>` — nesse ponto, aceitar
+ * protocol-relative vira carregar recurso de host arbitrário a partir de um
+ * campo que deveria apontar só para o próprio storage.
  */
-const IMAGE_URL_PATTERN = /^(?:https?:\/\/\S+|\/\S+)$/;
+const IMAGE_URL_PATTERN = /^(?:https?:\/\/\S+|\/(?!\/)\S+)$/;
 
 export const createOccurrenceSchema = z
   .object({
