@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Os jobs `e2e` (Playwright) e `docker` (build da imagem + smoke test em
+# /api/v1/health) entram numa etapa posterior.
+jobs:
+  quality:
+    name: Lint, tipos e formatação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Checagem de tipos
+        run: npm run typecheck
+
+      - name: Formatação
+        run: npm run format:check
+
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-build-secret-nao-usar-em-producao
+
+  test:
+    name: Testes unitários e de integração
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resolve
+          POSTGRES_PASSWORD: resolve
+          POSTGRES_DB: resolve_ai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resolve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_test?schema=public
+      AUTH_SECRET: ci-test-secret-nao-usar-em-producao
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Aplicar migrations
+        run: npx prisma migrate deploy
+
+      - name: Testes com cobertura
+        run: npm run test:cov
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: warn
