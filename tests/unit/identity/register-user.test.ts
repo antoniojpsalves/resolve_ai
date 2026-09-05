@@ -1,42 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { ConflictError } from '@/core/errors';
-import type {
-  CreateUserData,
-  UserRepository,
-} from '@/modules/identity/application/ports/user-repository';
+import type { UserRepository } from '@/modules/identity/application/ports/user-repository';
 import {
   registerUser,
   registerUserSchema,
   type RegisterUserInput,
 } from '@/modules/identity/application/register-user';
-import type { User } from '@/modules/identity/domain/user';
 import { hashPassword, verifyPassword } from '@/modules/identity/infra/password';
 
-/** Repositório fake em memória — o use-case não conhece Prisma. */
-function createInMemoryUserRepository(seed: User[] = []) {
-  const rows = new Map<string, User>(seed.map((user) => [user.email, user]));
-  let nextId = seed.length + 1;
-
-  const repository: UserRepository = {
-    async findByEmail(email: string) {
-      return rows.get(email) ?? null;
-    },
-    async create(data: CreateUserData) {
-      const user: User = {
-        id: `user-${nextId++}`,
-        createdAt: new Date('2026-09-01T12:00:00.000Z'),
-        ...data,
-      };
-
-      rows.set(user.email, user);
-
-      return user;
-    },
-  };
-
-  return { repository, rows };
-}
+import { createInMemoryUserRepository } from '../../helpers/user-repository';
 
 const deps = (repository: UserRepository) => ({ users: repository, hashPassword });
 
