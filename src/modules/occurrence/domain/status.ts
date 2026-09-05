@@ -1,10 +1,6 @@
 /** Ciclo de vida de uma ocorrência. */
 export type OccurrenceStatus =
-  | 'ABERTA'
-  | 'EM_ANALISE'
-  | 'EM_ATENDIMENTO'
-  | 'RESOLVIDA'
-  | 'CANCELADA';
+  'ABERTA' | 'EM_ANALISE' | 'EM_ATENDIMENTO' | 'RESOLVIDA' | 'CANCELADA';
 
 /**
  * Mapa de destinos válidos a partir de cada status. Única fonte de verdade
