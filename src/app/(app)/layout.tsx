@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { UnauthorizedError } from '@/core/errors';
-import { requireSession } from '@/core/http/auth-guards';
+import { requireSessionOrRedirect } from '@/core/http/auth-guards';
 
 import { SignOutButton } from './sign-out-button';
 
@@ -22,18 +20,7 @@ const ROLE_LABEL = {
  * acontece no servidor, junto do dado.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  let session;
-
-  try {
-    session = await requireSession();
-  } catch (error) {
-    if (error instanceof UnauthorizedError) {
-      redirect('/login');
-    }
-
-    throw error;
-  }
-
+  const session = await requireSessionOrRedirect();
   const { user } = session;
 
   return (
