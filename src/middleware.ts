@@ -57,10 +57,15 @@ export default auth((request) => {
 
 export const config = {
   /**
-   * Fora do middleware: os endpoints do Auth.js, o health check, os assets do
-   * Next e os arquivos estáticos da pasta `public`.
+   * Fora do middleware: toda a API (`/api/**`), os assets do Next e os
+   * arquivos estáticos da pasta `public`.
+   *
+   * A API define sua própria fronteira de autorização via `requireSession`/
+   * `requireRole` (RFC 7807, 401/403) — o middleware não deve interceptá-la
+   * com um redirect 307 para `/login`, que quebraria o contrato JSON dessas
+   * rotas e o acesso público a `/api/docs`.
    */
   matcher: [
-    '/((?!api/v1/auth/|api/v1/auth$|api/v1/health$|_next/static/|_next/image/|favicon\\.ico$|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|txt|xml|woff|woff2)$).*)',
+    '/((?!api/|_next/static/|_next/image/|favicon\\.ico$|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|txt|xml|woff|woff2)$).*)',
   ],
 };
