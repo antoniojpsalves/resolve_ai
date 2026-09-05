@@ -1,21 +1,13 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { z } from 'zod';
 
 import { authConfig } from '@/auth.config';
-import { prisma } from '@/core/db/prisma';
-import type { Role } from '@/modules/identity/domain/role';
-import { normalizeEmail } from '@/modules/identity/domain/user';
+import {
+  authenticateUser,
+  authenticateUserSchema,
+} from '@/modules/identity/application/authenticate-user';
 import { verifyPassword } from '@/modules/identity/infra/password';
-
-/**
- * Validação mínima do payload de login. Feita antes de qualquer ida ao banco:
- * um payload malformado nem chega a gerar consulta.
- */
-const credentialsSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(1),
-});
+import { prismaUserRepository } from '@/modules/identity/infra/prisma-user-repository';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -27,28 +19,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Senha', type: 'password' },
       },
       /**
+       * Só transporte: valida a forma do payload, delega ao use-case
+       * `authenticateUser` e traduz o resultado para o contrato do Auth.js.
+       * A regra de autenticação — incluindo a defesa contra o oráculo de
+       * temporização — vive na camada de aplicação e é testável sem subir o Next.
+       *
        * Retornar `null` faz o Auth.js responder com um erro genérico
        * (`CredentialsSignin`). Os três caminhos de falha — payload inválido,
-       * e-mail inexistente e senha errada — devolvem exatamente a mesma coisa,
-       * de propósito: a resposta não pode revelar se o e-mail está cadastrado.
+       * e-mail inexistente e senha errada — devolvem a mesma resposta.
        */
       async authorize(rawCredentials) {
-        const parsed = credentialsSchema.safeParse(rawCredentials);
+        const parsed = authenticateUserSchema.safeParse(rawCredentials);
 
         if (!parsed.success) {
           return null;
         }
 
-        const email = normalizeEmail(parsed.data.email);
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await authenticateUser(parsed.data, {
+          users: prismaUserRepository,
+          verifyPassword,
+        });
 
         if (!user) {
-          return null;
-        }
-
-        const passwordMatches = await verifyPassword(parsed.data.password, user.passwordHash);
-
-        if (!passwordMatches) {
           return null;
         }
 
@@ -56,7 +48,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role as Role,
+          role: user.role,
         };
       },
     }),
