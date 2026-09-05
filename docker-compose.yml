@@ -40,8 +40,18 @@ services:
     volumes:
       - .:/app
       - node_modules:/app/node_modules
+      - next_build:/app/.next
     env_file:
       - .env
+    # O .env é compartilhado com o fluxo de dev no host, onde `localhost`
+    # é o valor correto (as portas do Postgres são publicadas no host).
+    # Dentro da rede do compose, porém, `localhost` aponta para o próprio
+    # container `app`, não para `db`/`db-test`. Por isso sobrescrevemos as
+    # duas URLs aqui com os nomes de serviço e a porta interna 5432 — o
+    # bloco `environment:` tem precedência sobre `env_file:`.
+    environment:
+      DATABASE_URL: postgresql://resolve:resolve@db:5432/resolve_ai?schema=public
+      DATABASE_URL_TEST: postgresql://resolve:resolve@db-test:5432/resolve_ai_test?schema=public
     depends_on:
       db:
         condition: service_healthy
@@ -49,3 +59,4 @@ services:
 volumes:
   resolve_ai_db:
   node_modules:
+  next_build:
