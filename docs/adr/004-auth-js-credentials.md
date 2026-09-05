@@ -36,8 +36,23 @@ Pontos concretos da implementação:
 - **Hash de senha reutilizado.** O `authorize` chama `verifyPassword` de
   `src/modules/identity/infra/password.ts` — o mesmo módulo usado pelo seed e pelo cadastro.
   Há um único caminho de hash no projeto (bcryptjs, cost 10).
-- **Resposta uniforme na falha.** Payload inválido, e-mail inexistente e senha errada
-  retornam exatamente o mesmo erro genérico. A resposta não permite enumerar contas.
+- **Regra de autenticação na camada de aplicação.** O `authorize` do provider é só
+  transporte: valida a forma do payload e delega ao use-case `authenticateUser`
+  (`src/modules/identity/application/authenticate-user.ts`), que recebe as ports
+  `UserRepository` e `PasswordVerifier`. A regra mais sensível do sistema é testável sem
+  subir o Next e usa o mesmo repositório do cadastro.
+- **Resposta uniforme na falha — no corpo e no tempo.** Payload inválido, e-mail
+  inexistente e senha errada retornam exatamente o mesmo erro genérico
+  (`CredentialsSignin`). Isso, sozinho, não bastava: retornar cedo quando o e-mail não
+  existe deixava um **oráculo de temporização**. O caminho "e-mail cadastrado, senha
+  errada" executava um bcrypt de cost 10 (~58 ms) e o caminho "e-mail inexistente" não
+  executava nenhum (~3 ms) — uma diferença estável de ~20x, suficiente para enumerar
+  contas cronometrando as respostas.
+  A defesa é comparar a senha informada contra um hash bcrypt constante de mesmo cost
+  (`DUMMY_PASSWORD_HASH`, no próprio use-case) quando o usuário não é encontrado,
+  descartando o resultado. Os dois caminhos passam a executar exatamente um bcrypt de
+  cost 10 e a custar o mesmo tempo (medido: 58 ms vs 57 ms). O cost do hash dummy
+  precisa acompanhar o `SALT_ROUNDS` de `infra/password.ts`, ou o oráculo reabre.
 - **Guardas no servidor.** `requireSession()` e `requireRole(role)`, em
   `src/core/http/auth-guards.ts`, lançam `UnauthorizedError` (401) e `ForbiddenError` (403).
   São chamadas em layouts e Server Components — o middleware é conveniência de UX, não a
@@ -68,6 +83,8 @@ declarativo do Next 15, e não oferece `basePath` configurável do jeito que pre
 **Positivas**
 
 - Fluxo de credenciais, CSRF e cookies tratados por uma biblioteca revisada pela comunidade.
+- Autenticação e cadastro compartilham o mesmo `UserRepository`, e ambos são testáveis com
+  um repositório fake em memória — sem banco e sem servidor.
 - `role` disponível no middleware, nos Server Components e nos route handlers sem consulta
   ao banco.
 - Autenticação sob `/api/v1/auth/*`, coerente com o contrato de API.
@@ -86,3 +103,15 @@ declarativo do Next 15, e não oferece `basePath` configurável do jeito que pre
   valor do `.env.example` é só para desenvolvimento.
 - **Provider Credentials exige o runtime Node**, o que impede rodar a verificação de senha
   no edge e obriga a divisão em `auth.config.ts` / `auth.ts`.
+- **O papel fica congelado no token.** `role` é gravado no JWT no momento do login e lido
+  de lá em todo lugar — inclusive pelo `requireRole` do servidor, que **não** consulta o
+  banco. Consequência prática: um GESTOR rebaixado a SOLICITANTE no banco continua com
+  acesso de GESTOR até o token expirar (30 dias, o padrão do Auth.js) ou até fazer login
+  de novo. Uma revogação imediata exigiria consultar o papel no banco a cada requisição
+  ou migrar para sessão em banco — as duas opções estão descritas acima.
+- **Não há rate limiting.** Nem em `POST /api/v1/auth/register`, nem em
+  `POST /api/v1/auth/callback/credentials`. Hoje nada impede força bruta de senha ou
+  criação em massa de contas: o custo do bcrypt (cost 10, ~58 ms) atrasa um atacante, mas
+  não é um limite. Fora do escopo do MVP inicial, mas **pendência obrigatória antes do
+  deploy de produção** — deve entrar junto com a configuração de produção, provavelmente
+  como limite por IP + por e-mail no middleware ou numa camada à frente da aplicação.
