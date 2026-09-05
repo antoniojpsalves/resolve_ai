@@ -20,14 +20,14 @@ ocorrências, com autenticação de usuários e coleta de feedback.
 
 ## Pré-requisitos
 
-- Node.js 22+ (ou compatível — ver nota abaixo)
+- Node.js 24+ (ou compatível — ver nota abaixo)
 - npm
 - Docker e Docker Compose (para subir Postgres localmente)
 
 > **Nota sobre versão do Node:** o `docker-compose.yml` usa a imagem
-> `node:22-alpine` para o serviço `app`. Localmente, o projeto foi
-> desenvolvido e validado também com Node 26; use a versão que preferir,
-> desde que compatível com Next.js 15.
+> `node:24-alpine` para o serviço `app`. O npm 10 (padrão do Node 22)
+> não reconcilia a estrutura de override do lockfile gerada pelo npm 11;
+> use Node 24+ (npm 11+) local e em CI para evitar falha no `npm ci`.
 
 ## Como subir com Docker Compose
 
