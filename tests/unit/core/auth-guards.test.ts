@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ForbiddenError, UnauthorizedError } from '@/core/errors';
 import {
+  requireAnyRole,
   requireRole,
   requireRoleOrRedirect,
   requireSession,
@@ -99,6 +100,44 @@ describe('requireRole', () => {
     authMock.mockResolvedValue(session);
 
     await expect(requireRole('SOLICITANTE')).resolves.toBe(session);
+  });
+});
+
+describe('requireAnyRole', () => {
+  it('devolve a sessão quando o papel do ator está na lista', async () => {
+    const session = sessionWith('GESTOR');
+    authMock.mockResolvedValue(session);
+
+    await expect(requireAnyRole(['SOLICITANTE', 'GESTOR'])).resolves.toBe(session);
+  });
+
+  it('lança ForbiddenError quando o papel não está na lista', async () => {
+    authMock.mockResolvedValue(sessionWith('SOLICITANTE'));
+
+    await expect(requireAnyRole(['GESTOR'])).rejects.toBeInstanceOf(ForbiddenError);
+    await expect(requireAnyRole(['GESTOR'])).rejects.toMatchObject({
+      status: 403,
+      code: 'FORBIDDEN',
+    });
+  });
+
+  it('lança UnauthorizedError (401, não 403) quando não há sessão', async () => {
+    authMock.mockResolvedValue(null);
+
+    await expect(requireAnyRole(['SOLICITANTE', 'GESTOR'])).rejects.toBeInstanceOf(
+      UnauthorizedError,
+    );
+    await expect(requireAnyRole(['SOLICITANTE', 'GESTOR'])).rejects.not.toBeInstanceOf(
+      ForbiddenError,
+    );
+  });
+
+  it('requireRole é o caso particular de requireAnyRole com um papel só', async () => {
+    authMock.mockResolvedValue(sessionWith('SOLICITANTE'));
+
+    await expect(requireRole('SOLICITANTE')).resolves.toEqual(
+      await requireAnyRole(['SOLICITANTE']),
+    );
   });
 });
 
