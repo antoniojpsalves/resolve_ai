@@ -26,12 +26,6 @@ export class AppError extends Error {
   public readonly detail?: string;
   public readonly extras?: Record<string, unknown>;
 
-  /**
-   * Alias histórico de `status`, mantido para não quebrar o código escrito
-   * antes da introdução das primitivas RFC 7807.
-   */
-  public readonly statusCode: number;
-
   constructor(code: string, title: string, status = 400, options: AppErrorOptions = {}) {
     super(title);
 
@@ -39,7 +33,6 @@ export class AppError extends Error {
     this.code = code;
     this.title = title;
     this.status = status;
-    this.statusCode = status;
     this.detail = options.detail;
     this.extras = options.extras;
 
