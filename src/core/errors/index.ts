@@ -4,6 +4,7 @@ export {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  ServiceUnavailableError,
   UnauthorizedError,
   ValidationError,
 } from './http-errors';

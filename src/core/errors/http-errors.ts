@@ -41,3 +41,10 @@ export class ConflictError extends AppError {
     super('CONFLICT', title, 409, options);
   }
 }
+
+/** 503 — dependência externa (ex.: banco de dados) indisponível ou não pronta. */
+export class ServiceUnavailableError extends AppError {
+  constructor(title = 'Serviço indisponível', options: AppErrorOptions = {}) {
+    super('SERVICE_UNAVAILABLE', title, 503, options);
+  }
+}
