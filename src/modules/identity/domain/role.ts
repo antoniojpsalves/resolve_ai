@@ -6,10 +6,4 @@
  * Os valores são idênticos aos do enum `Role` do Prisma, então os dois tipos
  * são mutuamente atribuíveis sem conversão.
  */
-export const ROLES = ['SOLICITANTE', 'GESTOR'] as const;
-
-export type Role = (typeof ROLES)[number];
-
-export function isRole(value: unknown): value is Role {
-  return typeof value === 'string' && (ROLES as readonly string[]).includes(value);
-}
+export type Role = 'SOLICITANTE' | 'GESTOR';
