@@ -71,6 +71,39 @@ describe('toProblem — subclasses de AppError', () => {
     ).toBe('Tente outro e-mail.');
   });
 
+  it('não deixa os extras sobrescreverem os campos reservados do RFC 7807', () => {
+    const problem = toProblem(
+      new NotFoundError('Ocorrência não encontrada', {
+        detail: 'detail legítimo',
+        extras: {
+          status: 200,
+          type: 'https://malicioso.example/nao',
+          title: 'título forjado',
+          detail: 'detail forjado',
+          errors: [{ path: 'campo' }],
+        },
+      }),
+    );
+
+    expect(problem.status).toBe(404);
+    expect(problem.type).toBe('https://resolveai.app/errors/not-found');
+    expect(problem.title).toBe('Ocorrência não encontrada');
+    expect(problem.detail).toBe('detail legítimo');
+    // O que não é reservado continua passando.
+    expect(problem.errors).toEqual([{ path: 'campo' }]);
+  });
+
+  it('problemResponse ignora um status vindo de extras', async () => {
+    const response = problemResponse(
+      new ConflictError('E-mail já cadastrado', { extras: { status: 999 } }),
+    );
+
+    // Sem a ordem correta do spread, `new Response(..., { status: 999 })`
+    // lançaria RangeError dentro do próprio tratador de erros.
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ status: 409 });
+  });
+
   it('espalha os membros de extensão no corpo', () => {
     const problem = toProblem(
       new ValidationError('Dados inválidos', { extras: { errors: [{ path: 'email' }] } }),
