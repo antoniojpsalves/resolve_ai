@@ -40,6 +40,14 @@ describe('createOccurrenceSchema', () => {
     ['latitude fora do intervalo', { ...validInput, latitude: 999 }],
     ['longitude fora do intervalo', { ...validInput, longitude: -999 }],
     ['imageUrl inválida', { ...validInput, imageUrl: 'nao-eh-url' }],
+    [
+      'imageUrl protocol-relative (//evil.com/x.png)',
+      { ...validInput, imageUrl: '//evil.com/x.png' },
+    ],
+    [
+      'imageUrl com esquema não http(s) (javascript:alert(1))',
+      { ...validInput, imageUrl: 'javascript:alert(1)' },
+    ],
   ])('rejeita %s', (_label, input) => {
     expect(createOccurrenceSchema.safeParse(input).success).toBe(false);
   });
