@@ -115,7 +115,9 @@ export function RegisterForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl">Criar conta</CardTitle>
+        <CardTitle className="text-2xl">
+          <h1>Criar conta</h1>
+        </CardTitle>
         <CardDescription>Leva menos de um minuto.</CardDescription>
       </CardHeader>
 

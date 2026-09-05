@@ -10,14 +10,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { CardContent, CardFooter } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -86,76 +79,69 @@ export function LoginForm() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl">Entrar</CardTitle>
-        <CardDescription>Acesse sua conta para acompanhar suas ocorrências.</CardDescription>
-      </CardHeader>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-          <CardContent className="space-y-4">
-            {formError ? (
-              <p
-                role="alert"
-                className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
-              >
-                {formError}
-              </p>
-            ) : null}
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>E-mail</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="voce@exemplo.com"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" autoComplete="current-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-
-          <CardFooter className="mt-6 flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="animate-spin" aria-hidden /> : null}
-              {isSubmitting ? 'Entrando…' : 'Entrar'}
-            </Button>
-
-            <p className="text-muted-foreground text-sm">
-              Ainda não tem conta?{' '}
-              <Link
-                href="/cadastro"
-                className="text-primary font-medium underline-offset-4 hover:underline"
-              >
-                Cadastre-se
-              </Link>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <CardContent className="space-y-4">
+          {formError ? (
+            <p
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm"
+            >
+              {formError}
             </p>
-          </CardFooter>
-        </form>
-      </Form>
-    </Card>
+          ) : null}
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>E-mail</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@exemplo.com"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Senha</FormLabel>
+                <FormControl>
+                  <Input type="password" autoComplete="current-password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </CardContent>
+
+        <CardFooter className="mt-6 flex-col gap-4">
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="animate-spin" aria-hidden /> : null}
+            {isSubmitting ? 'Entrando…' : 'Entrar'}
+          </Button>
+
+          <p className="text-muted-foreground text-sm">
+            Ainda não tem conta?{' '}
+            <Link
+              href="/cadastro"
+              className="text-primary font-medium underline-offset-4 hover:underline"
+            >
+              Cadastre-se
+            </Link>
+          </p>
+        </CardFooter>
+      </form>
+    </Form>
   );
 }
