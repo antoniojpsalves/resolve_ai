@@ -27,11 +27,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PASSWORD_RULE } from '@/modules/identity/application/register-user';
 
 /**
  * Espelha `registerUserSchema` do use-case e acrescenta a confirmação de senha,
  * que é uma exigência de UI e não de domínio. A validação do servidor continua
- * sendo a autoridade — esta aqui só evita um round-trip.
+ * sendo a autoridade — esta aqui só evita um round-trip. A regra de senha vem
+ * de `PASSWORD_RULE` (mesmo módulo do use-case) para não divergir da validação
+ * real feita em `POST /api/v1/auth/register`.
  */
 const registerSchema = z
   .object({
@@ -40,7 +43,7 @@ const registerSchema = z
     password: z
       .string()
       .min(8, 'A senha precisa ter ao menos 8 caracteres')
-      .regex(/^(?=.*[A-Za-zÀ-ÿ])(?=.*\d).+$/, 'A senha precisa ter ao menos uma letra e um número'),
+      .regex(PASSWORD_RULE, 'A senha precisa ter ao menos uma letra e um número'),
     confirmPassword: z.string().min(1, 'Confirme a senha'),
   })
   .refine((values) => values.password === values.confirmPassword, {
