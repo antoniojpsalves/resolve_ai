@@ -19,7 +19,15 @@ export const authConfig = {
     /** Propaga `id` e `role` do usuário para dentro do token no login. */
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id ?? token.sub ?? '';
+        const id = user.id ?? token.sub;
+
+        // Fail-closed: uma sessão com identidade '' passaria por `requireSession`
+        // e viraria dono de recurso nenhum. Melhor recusar o login.
+        if (!id) {
+          throw new Error('Login recusado: o provider não devolveu um id de usuário.');
+        }
+
+        token.id = id;
         token.role = user.role;
       }
 
