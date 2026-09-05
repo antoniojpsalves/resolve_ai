@@ -97,10 +97,7 @@ describe('canRateOccurrence', () => {
   });
 
   it('quem não é o autor não pode avaliar, mesmo RESOLVIDA', () => {
-    const resultado = canRateOccurrence(
-      outroSolicitante,
-      buildOccurrence({ status: 'RESOLVIDA' }),
-    );
+    const resultado = canRateOccurrence(outroSolicitante, buildOccurrence({ status: 'RESOLVIDA' }));
     expect(resultado).toBe(false);
   });
 
