@@ -16,7 +16,7 @@ import type { FileStorage, StoredFile } from '@/modules/occurrence/application/p
  * nome de arquivo do cliente (que não chega até esta camada; o use-case só
  * repassa os bytes e a extensão já derivada do formato detectado).
  */
-const UPLOAD_DIR = path.join(process.cwd(), '.storage', 'uploads');
+export const UPLOAD_DIR = path.join(process.cwd(), '.storage', 'uploads');
 
 export const localFileStorage: FileStorage = {
   async save({ data, extension }): Promise<StoredFile> {
