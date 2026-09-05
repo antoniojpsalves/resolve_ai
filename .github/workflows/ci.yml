@@ -34,6 +34,11 @@ jobs:
       - name: Formatação
         run: npm run format:check
 
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-build-secret-nao-usar-em-producao
+
   test:
     name: Testes unitários e de integração
     runs-on: ubuntu-latest
