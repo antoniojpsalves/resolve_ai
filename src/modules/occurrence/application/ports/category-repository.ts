@@ -1,12 +1,17 @@
 /**
  * Recorte mínimo de categoria que `create-occurrence.ts` precisa para validar
- * `categoryId`: existência e se está ativa. O CRUD completo de categorias
- * (`GET /categories`) é da Tarefa 3 — esta port só cobre a checagem que a
- * criação de ocorrência já precisa hoje.
+ * `categoryId`: existência e se está ativa.
  */
 export interface CategoryLookup {
   id: string;
   active: boolean;
+}
+
+/** Recorte de categoria devolvido pelo catálogo (`GET /api/v1/categories`). */
+export interface CategorySummary {
+  id: string;
+  name: string;
+  slug: string;
 }
 
 /**
@@ -15,4 +20,6 @@ export interface CategoryLookup {
  */
 export interface CategoryRepository {
   findById(id: string): Promise<CategoryLookup | null>;
+  /** Categorias ativas, ordenadas por nome — catálogo usado por `list-categories.ts`. */
+  listActive(): Promise<CategorySummary[]>;
 }
