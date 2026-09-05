@@ -88,5 +88,23 @@ produção (tipos, concorrência, `ILIKE`, agregações) e enfraqueceria o valor
   A dívida é conhecida, aceita e se resolve junto com a migração para a major 7.
 - O Prisma Client precisa ser gerado (`npx prisma generate`) após `npm ci`; o CI executa
   esse passo explicitamente no job `quality`.
-- O engine binário do Prisma pesa na imagem Docker; o build da imagem deve tratar isso
-  multi-stage.
+- O engine binário do Prisma pesa na imagem Docker; o build multi-stage de produção
+  deve tratar isso.
+
+### `npm audit`: 5 vulnerabilidades conhecidas, fix automático não aplicado
+
+`npm audit` reporta 5 vulnerabilidades (4 _high_, 1 _moderate_), todas transitivas e
+fora do caminho de requisição:
+
+- **`postcss` (via `next`)** — 3 avisos de XSS/path traversal na etapa de build do
+  CSS. `postcss` só roda durante o build (Tailwind), nunca no request path em runtime.
+- **`deepmerge-ts` (via `@prisma/config`)** — 1 aviso de esgotamento de pilha ao
+  fazer merge de grafos recursivos. `@prisma/config` só é usado pela CLI do Prisma
+  (`prisma generate`/`migrate`), não pelo `@prisma/client` em runtime.
+
+O `npm audit fix --force` proposto resolveria instalando `next@16` (major acima da
+`15.5.25` fixada) e fazendo _downgrade_ de `prisma` para `6.12.0` — o que contradiz a
+decisão de fixar `6.19.3` registrada acima e trocaria uma major do Next não avaliada
+por uma correção de uma vulnerabilidade que não afeta o runtime da aplicação. Optamos
+por não aplicar o fix automático agora; a correção correta é migrar Next e Prisma em
+janelas próprias, com CI verde como rede de segurança, e não como reação ao audit.
