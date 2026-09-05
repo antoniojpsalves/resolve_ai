@@ -17,6 +17,20 @@ import type { FileStorage, StoredFile } from '@/modules/occurrence/application/p
  *
  * A chave é gerada aqui, sempre `<uuid>.<extension>`, no mesmo formato da
  * implementação local — nunca a partir de um nome de arquivo do cliente.
+ *
+ * **Pendência conhecida — divergência com o comportamento de desenvolvimento:**
+ * `access: 'public'` significa que a URL devolvida pelo Blob é pública e não
+ * passa por sessão nenhuma — qualquer pessoa com a URL acessa a imagem, sem
+ * login. Isso diverge de `GET /api/v1/uploads/[...key]` (o adaptador local),
+ * que agora exige sessão (`requireSession`, decisão do dono do produto —
+ * rodada de correção da Tarefa 3). Para o comportamento de produção bater
+ * com o de desenvolvimento, o Dia 5 precisa escolher uma das duas: (a) trocar
+ * `access: 'public'` por uma URL assinada/privada do Blob, ou (b) parar de
+ * expor a URL pública do Blob direto no `imageUrl` e servir o conteúdo
+ * através de uma rota própria autenticada (o mesmo papel que
+ * `GET /api/v1/uploads/[...key]` cumpre para o storage local). Nenhuma das
+ * duas foi implementada aqui — decisão pendente, registrada só para o Dia 5
+ * não esquecer.
  */
 export const blobFileStorage: FileStorage = {
   async save({ data, contentType, extension }): Promise<StoredFile> {
