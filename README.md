@@ -85,6 +85,14 @@ Ver `.env.example` para o conjunto completo. Resumo:
 | `AUTH_URL`             | URL base da aplicação para o NextAuth                           |
 | `NEXT_PUBLIC_APP_NAME` | Nome público da aplicação, exposto ao client                    |
 
+`.env.example`/`.env` usam `localhost` em `DATABASE_URL`/`DATABASE_URL_TEST`
+porque é o valor correto para quem roda `npm run dev` no host (as portas do
+Postgres são publicadas em `5432`/`5433`). O serviço `app` do
+`docker-compose.yml` sobrescreve essas duas variáveis via `environment:`
+apontando para os nomes de serviço (`db`/`db-test`) na porta interna
+`5432`, já que dentro da rede do compose `localhost` resolveria para o
+próprio container `app`.
+
 ## Estrutura do projeto
 
 ```
