@@ -5,8 +5,14 @@ import { normalizeEmail, toPublicUser, type PublicUser } from '@/modules/identit
 
 import type { PasswordHasher, UserRepository } from './ports/user-repository';
 
-/** Pelo menos uma letra e pelo menos um dígito. */
-const PASSWORD_RULE = /^(?=.*[A-Za-zÀ-ÿ])(?=.*\d).+$/;
+/**
+ * Pelo menos uma letra e pelo menos um dígito.
+ *
+ * Exportada porque este módulo só importa `zod` e `@/core/errors` — é seguro
+ * puxá-lo de um Client Component (`register-form.tsx`) para não duplicar a
+ * regra entre validação de servidor e de UI.
+ */
+export const PASSWORD_RULE = /^(?=.*[A-Za-zÀ-ÿ])(?=.*\d).+$/;
 
 /**
  * Schema do cadastro público.

@@ -7,10 +7,19 @@ import type { PasswordVerifier, UserRepository } from './ports/user-repository';
 /**
  * Payload de login. Validado antes de qualquer ida ao banco: um payload
  * malformado nem chega a gerar consulta.
+ *
+ * Compartilhado com `login-form.tsx` (este módulo só importa `zod`, então é
+ * seguro puxá-lo de um Client Component) para não duplicar a forma do
+ * payload entre a validação de servidor e a de UI.
  */
 export const authenticateUserSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(1),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, 'Informe seu e-mail')
+    .email('Informe um e-mail válido'),
+  password: z.string().min(1, 'Informe sua senha'),
 });
 
 export type AuthenticateUserInput = z.infer<typeof authenticateUserSchema>;

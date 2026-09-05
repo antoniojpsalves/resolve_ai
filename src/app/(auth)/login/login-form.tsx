@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { CardContent, CardFooter } from '@/components/ui/card';
@@ -20,11 +20,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { authenticateUserSchema } from '@/modules/identity/application/authenticate-user';
 
-const loginSchema = z.object({
-  email: z.string().trim().min(1, 'Informe seu e-mail').email('Informe um e-mail válido'),
-  password: z.string().min(1, 'Informe sua senha'),
-});
+/**
+ * Mesmo schema usado por `authenticateUser` no servidor — evita duas
+ * definições da forma do payload de login divergindo com o tempo.
+ */
+const loginSchema = authenticateUserSchema;
 
 type LoginValues = z.infer<typeof loginSchema>;
 
