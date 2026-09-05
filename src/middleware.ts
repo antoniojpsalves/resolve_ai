@@ -61,6 +61,6 @@ export const config = {
    * Next e os arquivos estáticos da pasta `public`.
    */
   matcher: [
-    '/((?!api/v1/auth|api/v1/health|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|txt|xml|woff|woff2)$).*)',
+    '/((?!api/v1/auth/|api/v1/auth$|api/v1/health$|_next/static/|_next/image/|favicon\\.ico$|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|txt|xml|woff|woff2)$).*)',
   ],
 };
