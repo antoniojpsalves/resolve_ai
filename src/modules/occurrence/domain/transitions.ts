@@ -1,3 +1,4 @@
+import { isAuthor } from './occurrence';
 import type { Actor, Occurrence } from './occurrence';
 import { isTerminalStatus, TRANSITIONS } from './status';
 import type { OccurrenceStatus } from './status';
@@ -38,7 +39,7 @@ function isAuthorized(
   }
 
   if (from === 'ABERTA' && to === 'CANCELADA') {
-    return actor.id === occurrence.createdById;
+    return isAuthor(actor, occurrence);
   }
 
   return false;

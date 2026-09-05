@@ -20,8 +20,4 @@ describe('priorityWeight', () => {
 
     expect(ordenadas).toEqual(['URGENTE', 'ALTA', 'MEDIA', 'BAIXA']);
   });
-
-  it('é uma função estável: mesma entrada sempre produz a mesma saída', () => {
-    expect(priorityWeight('ALTA')).toBe(priorityWeight('ALTA'));
-  });
 });

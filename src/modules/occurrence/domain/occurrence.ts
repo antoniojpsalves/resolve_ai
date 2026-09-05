@@ -23,3 +23,12 @@ export type Actor = {
   id: string;
   role: Role;
 };
+
+/**
+ * O autor é quem abriu a ocorrência. Compartilhada entre `permissions.ts` e
+ * `transitions.ts` para não duplicar a mesma comparação `actor.id ===
+ * occurrence.createdById` nos dois módulos.
+ */
+export function isAuthor(actor: Actor, occurrence: Occurrence): boolean {
+  return actor.id === occurrence.createdById;
+}
