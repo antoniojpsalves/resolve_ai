@@ -24,3 +24,9 @@ export interface UserRepository {
  * implementação concreta é `infra/password.ts`, compartilhada com o seed.
  */
 export type PasswordHasher = (plain: string) => Promise<string>;
+
+/**
+ * Port de verificação de senha. Espelha `verifyPassword` de `infra/password.ts`
+ * e mantém o use-case de autenticação livre de `bcryptjs`.
+ */
+export type PasswordVerifier = (plain: string, hash: string) => Promise<boolean>;
