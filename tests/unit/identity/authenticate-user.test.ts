@@ -4,43 +4,25 @@ import {
   authenticateUser,
   authenticateUserSchema,
 } from '@/modules/identity/application/authenticate-user';
-import type {
-  CreateUserData,
-  UserRepository,
-} from '@/modules/identity/application/ports/user-repository';
 import type { User } from '@/modules/identity/domain/user';
 import { hashPassword, verifyPassword } from '@/modules/identity/infra/password';
 
+import { createInMemoryUserRepository } from '../../helpers/user-repository';
+
 const SENHA = 'Senha@123';
 
-async function createInMemoryUserRepository(seed: Omit<User, 'passwordHash'>[] = []) {
-  const rows = new Map<string, User>();
-
-  for (const entry of seed) {
-    rows.set(entry.email, { ...entry, passwordHash: await hashPassword(SENHA) });
-  }
-
-  const repository: UserRepository = {
-    async findByEmail(email: string) {
-      return rows.get(email) ?? null;
-    },
-    async create(data: CreateUserData) {
-      const user: User = { id: 'novo', createdAt: new Date(), ...data };
-      rows.set(user.email, user);
-      return user;
-    },
+/** Monta o seed com um hash real de `SENHA` — o helper compartilhado recebe
+ * usuários já prontos (`passwordHash` incluso) em vez de hashear por trás. */
+async function buildAna(): Promise<User> {
+  return {
+    id: 'user-ana',
+    name: 'Ana Paula Ribeiro',
+    email: 'ana@resolveai.com',
+    role: 'SOLICITANTE',
+    createdAt: new Date('2026-09-01T12:00:00.000Z'),
+    passwordHash: await hashPassword(SENHA),
   };
-
-  return { repository, rows };
 }
-
-const ana: Omit<User, 'passwordHash'> = {
-  id: 'user-ana',
-  name: 'Ana Paula Ribeiro',
-  email: 'ana@resolveai.com',
-  role: 'SOLICITANTE',
-  createdAt: new Date('2026-09-01T12:00:00.000Z'),
-};
 
 describe('authenticateUserSchema', () => {
   it('normaliza o e-mail para lowercase e sem espaços', () => {
@@ -63,7 +45,7 @@ describe('authenticateUserSchema', () => {
 
 describe('authenticateUser', () => {
   it('devolve a projeção pública quando as credenciais conferem', async () => {
-    const { repository } = await createInMemoryUserRepository([ana]);
+    const { repository } = createInMemoryUserRepository([await buildAna()]);
 
     const result = await authenticateUser(
       { email: 'ana@resolveai.com', password: SENHA },
@@ -80,7 +62,7 @@ describe('authenticateUser', () => {
   });
 
   it('aceita o e-mail em caixa diferente', async () => {
-    const { repository } = await createInMemoryUserRepository([ana]);
+    const { repository } = createInMemoryUserRepository([await buildAna()]);
 
     const result = await authenticateUser(
       { email: 'ANA@RESOLVEAI.COM', password: SENHA },
@@ -91,7 +73,7 @@ describe('authenticateUser', () => {
   });
 
   it('devolve null quando a senha está errada', async () => {
-    const { repository } = await createInMemoryUserRepository([ana]);
+    const { repository } = createInMemoryUserRepository([await buildAna()]);
 
     const result = await authenticateUser(
       { email: 'ana@resolveai.com', password: 'SenhaErrada@1' },
@@ -102,7 +84,7 @@ describe('authenticateUser', () => {
   });
 
   it('devolve null quando o e-mail não existe', async () => {
-    const { repository } = await createInMemoryUserRepository([ana]);
+    const { repository } = createInMemoryUserRepository([await buildAna()]);
 
     const result = await authenticateUser(
       { email: 'nao.existe@resolveai.com', password: SENHA },
@@ -114,7 +96,7 @@ describe('authenticateUser', () => {
 
   describe('defesa contra oráculo de temporização', () => {
     it('verifica a senha contra um hash dummy quando o usuário não existe', async () => {
-      const { repository } = await createInMemoryUserRepository([ana]);
+      const { repository } = createInMemoryUserRepository([await buildAna()]);
       const spy = vi.fn(verifyPassword);
 
       await authenticateUser(
@@ -133,7 +115,7 @@ describe('authenticateUser', () => {
     });
 
     it('usa o mesmo número de verificações nos dois caminhos de falha', async () => {
-      const { repository } = await createInMemoryUserRepository([ana]);
+      const { repository } = createInMemoryUserRepository([await buildAna()]);
 
       const spyInexistente = vi.fn(verifyPassword);
       await authenticateUser(
@@ -151,7 +133,7 @@ describe('authenticateUser', () => {
     });
 
     it('o hash dummy nunca autentica ninguém', async () => {
-      const { repository } = await createInMemoryUserRepository();
+      const { repository } = createInMemoryUserRepository();
       const spy = vi.fn(verifyPassword);
 
       const result = await authenticateUser(
@@ -164,7 +146,7 @@ describe('authenticateUser', () => {
     });
 
     it('os dois caminhos de falha gastam tempos comparáveis (bcrypt real)', async () => {
-      const { repository } = await createInMemoryUserRepository([ana]);
+      const { repository } = createInMemoryUserRepository([await buildAna()]);
 
       const medir = async (email: string) => {
         const inicio = performance.now();
