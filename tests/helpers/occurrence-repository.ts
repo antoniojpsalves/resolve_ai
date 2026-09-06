@@ -15,6 +15,17 @@ import {
 
 const FIXED_NOW = new Date('2026-09-01T12:00:00.000Z');
 
+/**
+ * Placeholder óbvio para `changedByName`/`authorName` gerados internamente
+ * por este fake (`create`/`addComment`) — a camada de aplicação só carrega
+ * `Actor.id`, nunca um nome (quem resolve o nome de verdade é a implementação
+ * Prisma, via `mappers.ts`/`prisma-occurrence-repository.ts`, coberta por
+ * `mappers.test.ts`). Nenhum teste depende do conteúdo exato desta string.
+ */
+function fakeName(id: string): string {
+  return `Nome de teste (${id})`;
+}
+
 export type FakeOccurrenceSeed = OccurrenceRecord & {
   history?: StatusHistoryEntry[];
   comments?: CommentEntry[];
@@ -85,6 +96,7 @@ export function createInMemoryOccurrenceRepository(
         imageKey: input.imageKey ?? null,
         createdById: input.createdById,
         assignedToId: null,
+        assignedToName: null,
         resolutionNote: null,
         resolvedAt: null,
         createdAt: now,
@@ -97,6 +109,7 @@ export function createInMemoryOccurrenceRepository(
         toStatus: 'ABERTA',
         note: null,
         changedById: input.createdById,
+        changedByName: fakeName(input.createdById),
         createdAt: now,
       };
 
@@ -161,6 +174,7 @@ export function createInMemoryOccurrenceRepository(
         id: `comment-${nextCommentId++}`,
         occurrenceId: input.occurrenceId,
         authorId: input.authorId,
+        authorName: fakeName(input.authorId),
         body: input.body,
         createdAt: new Date(FIXED_NOW),
       };

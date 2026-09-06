@@ -139,8 +139,19 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const row = await prisma.occurrence.findUnique({
       where: { id },
       include: {
-        history: { orderBy: { createdAt: 'asc' } },
-        comments: { orderBy: { createdAt: 'asc' } },
+        // `select: { name: true }` em vez de `include` puro: só o nome de
+        // exibição precisa sair do banco, nunca o hash de senha ou o e-mail
+        // (ver `mappers.ts` — `changedByName`/`authorName`/`assignedToName`
+        // resolvem o `id` bruto para a UI, item da rodada de correção 1).
+        assignedTo: { select: { name: true } },
+        history: {
+          orderBy: { createdAt: 'asc' },
+          include: { changedBy: { select: { name: true } } },
+        },
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          include: { author: { select: { name: true } } },
+        },
         rating: true,
       },
     });
@@ -155,6 +166,7 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
         authorId: input.authorId,
         body: input.body,
       },
+      include: { author: { select: { name: true } } },
     });
 
     return toCommentEntry(row);

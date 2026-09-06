@@ -44,8 +44,24 @@ const baseOccurrenceRow: PrismaOccurrence = {
 };
 
 describe('toOccurrenceRecord', () => {
-  it('traduz a linha do Prisma para OccurrenceRecord', () => {
-    expect(toOccurrenceRecord(baseOccurrenceRow)).toEqual(baseOccurrenceRow);
+  it('traduz a linha do Prisma para OccurrenceRecord, assignedToName null sem relação incluída', () => {
+    // `create()` (prisma-occurrence-repository.ts) chama esta função sem
+    // incluir a relação `assignedTo` — não precisa, `assignedToId` é sempre
+    // null na criação. `assignedToName` cai em null sem exigir join.
+    expect(toOccurrenceRecord(baseOccurrenceRow)).toEqual({
+      ...baseOccurrenceRow,
+      assignedToName: null,
+    });
+  });
+
+  it('resolve assignedToName a partir da relação assignedTo, quando incluída', () => {
+    const row = {
+      ...baseOccurrenceRow,
+      assignedToId: 'user-gestor',
+      assignedTo: { name: 'Gestor de Teste' },
+    };
+
+    expect(toOccurrenceRecord(row).assignedToName).toBe('Gestor de Teste');
   });
 });
 
@@ -68,13 +84,14 @@ describe('toOccurrenceListItem', () => {
 
 describe('toStatusHistoryEntry', () => {
   it('mantém fromStatus null para a entrada de criação', () => {
-    const row: PrismaStatusHistory = {
+    const row: PrismaStatusHistory & { changedBy: { name: string } } = {
       id: 'hist-1',
       occurrenceId: 'occ-1',
       fromStatus: null,
       toStatus: 'ABERTA',
       note: null,
       changedById: 'user-ana',
+      changedBy: { name: 'Ana Paula Ribeiro' },
       createdAt: new Date('2026-08-01T10:00:00.000Z'),
     };
 
@@ -84,18 +101,20 @@ describe('toStatusHistoryEntry', () => {
       toStatus: 'ABERTA',
       note: null,
       changedById: 'user-ana',
+      changedByName: 'Ana Paula Ribeiro',
       createdAt: row.createdAt,
     });
   });
 
   it('traduz uma transição com fromStatus preenchido', () => {
-    const row: PrismaStatusHistory = {
+    const row: PrismaStatusHistory & { changedBy: { name: string } } = {
       id: 'hist-2',
       occurrenceId: 'occ-1',
       fromStatus: 'ABERTA',
       toStatus: 'EM_ANALISE',
       note: 'Em análise',
       changedById: 'user-gestor',
+      changedBy: { name: 'Gestor de Teste' },
       createdAt: new Date('2026-08-02T10:00:00.000Z'),
     };
 
@@ -105,6 +124,7 @@ describe('toStatusHistoryEntry', () => {
       toStatus: 'EM_ANALISE',
       note: 'Em análise',
       changedById: 'user-gestor',
+      changedByName: 'Gestor de Teste',
       createdAt: row.createdAt,
     });
   });
@@ -112,15 +132,23 @@ describe('toStatusHistoryEntry', () => {
 
 describe('toCommentEntry', () => {
   it('traduz a linha do Prisma para CommentEntry', () => {
-    const row: PrismaComment = {
+    const row: PrismaComment & { author: { name: string } } = {
       id: 'comment-1',
       occurrenceId: 'occ-1',
       authorId: 'user-ana',
+      author: { name: 'Ana Paula Ribeiro' },
       body: 'Aguardando retorno',
       createdAt: new Date('2026-08-01T12:00:00.000Z'),
     };
 
-    expect(toCommentEntry(row)).toEqual(row);
+    expect(toCommentEntry(row)).toEqual({
+      id: 'comment-1',
+      occurrenceId: 'occ-1',
+      authorId: 'user-ana',
+      authorName: 'Ana Paula Ribeiro',
+      body: 'Aguardando retorno',
+      createdAt: row.createdAt,
+    });
   });
 });
 
@@ -144,20 +172,22 @@ describe('toRatingEntry', () => {
 });
 
 describe('toOccurrenceDetail', () => {
-  it('combina o record com histórico, comentários e avaliação', () => {
-    const historyRow: PrismaStatusHistory = {
+  it('combina o record com histórico, comentários e avaliação, com nomes resolvidos', () => {
+    const historyRow = {
       id: 'hist-1',
       occurrenceId: 'occ-1',
       fromStatus: null,
-      toStatus: 'ABERTA',
+      toStatus: 'ABERTA' as const,
       note: null,
       changedById: 'user-ana',
+      changedBy: { name: 'Ana Paula Ribeiro' },
       createdAt: new Date('2026-08-01T10:00:00.000Z'),
     };
-    const commentRow: PrismaComment = {
+    const commentRow = {
       id: 'comment-1',
       occurrenceId: 'occ-1',
       authorId: 'user-ana',
+      author: { name: 'Ana Paula Ribeiro' },
       body: 'Aguardando retorno',
       createdAt: new Date('2026-08-01T12:00:00.000Z'),
     };
@@ -171,6 +201,8 @@ describe('toOccurrenceDetail', () => {
 
     const detail = toOccurrenceDetail({
       ...baseOccurrenceRow,
+      assignedToId: 'user-gestor',
+      assignedTo: { name: 'Gestor de Teste' },
       history: [historyRow],
       comments: [commentRow],
       rating: ratingRow,
@@ -178,6 +210,8 @@ describe('toOccurrenceDetail', () => {
 
     expect(detail).toEqual({
       ...baseOccurrenceRow,
+      assignedToId: 'user-gestor',
+      assignedToName: 'Gestor de Teste',
       history: [
         {
           id: 'hist-1',
@@ -185,10 +219,20 @@ describe('toOccurrenceDetail', () => {
           toStatus: 'ABERTA',
           note: null,
           changedById: 'user-ana',
+          changedByName: 'Ana Paula Ribeiro',
           createdAt: historyRow.createdAt,
         },
       ],
-      comments: [commentRow],
+      comments: [
+        {
+          id: 'comment-1',
+          occurrenceId: 'occ-1',
+          authorId: 'user-ana',
+          authorName: 'Ana Paula Ribeiro',
+          body: 'Aguardando retorno',
+          createdAt: commentRow.createdAt,
+        },
+      ],
       rating: { id: 'rating-1', score: 5, comment: null, createdAt: ratingRow.createdAt },
     });
   });
@@ -202,6 +246,7 @@ describe('toOccurrenceDetail', () => {
     });
 
     expect(detail.rating).toBeNull();
+    expect(detail.assignedToName).toBeNull();
     expect(detail.history).toEqual([]);
     expect(detail.comments).toEqual([]);
   });
