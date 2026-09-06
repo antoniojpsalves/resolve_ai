@@ -5,8 +5,8 @@ import type { OccurrenceStatus } from './status';
 
 /** Motivo de negação de uma transição — na ordem em que são checados. */
 export type TransitionDenial =
-  | 'TRANSICAO_INVALIDA' // o par (de, para) não existe em TRANSITIONS
   | 'STATUS_TERMINAL' // origem é terminal
+  | 'TRANSICAO_INVALIDA' // o par (de, para) não existe em TRANSITIONS
   | 'PERMISSAO_NEGADA' // o ator não pode fazer essa transição
   | 'OBSERVACAO_OBRIGATORIA' // falta `note`
   | 'SOLUCAO_OBRIGATORIA'; // falta `resolutionNote`
