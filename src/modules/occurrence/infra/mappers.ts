@@ -36,7 +36,21 @@ type OccurrenceRowWithAssignee = PrismaOccurrence & {
   assignedTo?: { name: string } | null;
 };
 
-export function toOccurrenceRecord(row: OccurrenceRowWithAssignee): OccurrenceRecord {
+/**
+ * `imageUrl` entra como parâmetro, não como campo lido de `row`: a coluna
+ * `Occurrence.imageUrl` deixou de ser escrita na criação (ver
+ * `create-occurrence.ts` e `CreateOccurrenceData`) — a URL de leitura é
+ * derivada de `row.imageKey` pelo `FileStorage` ativo, e isso exige I/O
+ * (uma chamada de rede no adaptador Blob). Calcular isso aqui dentro
+ * tornaria esta função assíncrona e dependente de infra, quebrando o que a
+ * torna fácil de testar hoje (entrada e saída puras, sem mock de storage).
+ * Quem chama (`prisma-occurrence-repository.ts`) resolve a URL antes e passa
+ * pronta.
+ */
+export function toOccurrenceRecord(
+  row: OccurrenceRowWithAssignee,
+  imageUrl: string | null,
+): OccurrenceRecord {
   return {
     id: row.id,
     code: row.code,
@@ -48,7 +62,7 @@ export function toOccurrenceRecord(row: OccurrenceRowWithAssignee): OccurrenceRe
     locationLabel: row.locationLabel,
     latitude: row.latitude,
     longitude: row.longitude,
-    imageUrl: row.imageUrl,
+    imageUrl,
     imageKey: row.imageKey,
     createdById: row.createdById,
     assignedToId: row.assignedToId,
@@ -120,9 +134,12 @@ type OccurrenceWithRelations = PrismaOccurrence & {
   rating: PrismaRating | null;
 };
 
-export function toOccurrenceDetail(row: OccurrenceWithRelations): OccurrenceDetail {
+export function toOccurrenceDetail(
+  row: OccurrenceWithRelations,
+  imageUrl: string | null,
+): OccurrenceDetail {
   return {
-    ...toOccurrenceRecord(row),
+    ...toOccurrenceRecord(row, imageUrl),
     history: row.history.map(toStatusHistoryEntry),
     comments: row.comments.map(toCommentEntry),
     rating: row.rating ? toRatingEntry(row.rating) : null,

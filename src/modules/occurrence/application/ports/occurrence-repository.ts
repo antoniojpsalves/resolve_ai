@@ -6,6 +6,12 @@ import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
  * pelo use-case via `buildOccurrenceCode` + `nextSequenceForYear`); `status`
  * e `priority` não entram aqui porque são sempre `ABERTA`/`MEDIA` na criação —
  * a implementação fixa os dois valores, não o chamador.
+ *
+ * Sem `imageUrl` de propósito: só `imageKey` (validada com `isValidUploadKey`
+ * pelo use-case) chega até aqui. A URL de leitura nunca é recebida do
+ * cliente nem gravada — é derivada de `imageKey` pelo `FileStorage` ativo no
+ * momento da leitura (ver `OccurrenceRecord.imageUrl` e
+ * `infra/prisma-occurrence-repository.ts`).
  */
 export interface CreateOccurrenceData {
   code: string;
@@ -15,7 +21,6 @@ export interface CreateOccurrenceData {
   locationLabel: string;
   latitude?: number;
   longitude?: number;
-  imageUrl?: string;
   imageKey?: string;
   createdById: string;
 }
@@ -38,6 +43,11 @@ export interface OccurrenceRecord {
   locationLabel: string;
   latitude: number | null;
   longitude: number | null;
+  /**
+   * Derivada de `imageKey` pelo `FileStorage` ativo no momento da leitura —
+   * nunca lida de uma coluna gravada no banco (ver `CreateOccurrenceData`).
+   * `null` quando não há `imageKey`.
+   */
   imageUrl: string | null;
   imageKey: string | null;
   createdById: string;

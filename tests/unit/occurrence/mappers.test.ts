@@ -48,7 +48,7 @@ describe('toOccurrenceRecord', () => {
     // `create()` (prisma-occurrence-repository.ts) chama esta função sem
     // incluir a relação `assignedTo` — não precisa, `assignedToId` é sempre
     // null na criação. `assignedToName` cai em null sem exigir join.
-    expect(toOccurrenceRecord(baseOccurrenceRow)).toEqual({
+    expect(toOccurrenceRecord(baseOccurrenceRow, null)).toEqual({
       ...baseOccurrenceRow,
       assignedToName: null,
     });
@@ -61,7 +61,18 @@ describe('toOccurrenceRecord', () => {
       assignedTo: { name: 'Gestor de Teste' },
     };
 
-    expect(toOccurrenceRecord(row).assignedToName).toBe('Gestor de Teste');
+    expect(toOccurrenceRecord(row, null).assignedToName).toBe('Gestor de Teste');
+  });
+
+  it('usa o imageUrl recebido por parâmetro, nunca row.imageUrl — a coluna não é mais lida', () => {
+    const row = { ...baseOccurrenceRow, imageKey: 'abc123.png', imageUrl: 'valor-da-coluna' };
+
+    // Mesmo com `row.imageUrl` preenchido, o resultado reflete só o segundo
+    // argumento — quem resolve a URL de leitura é quem chama esta função
+    // (`prisma-occurrence-repository.ts`), a partir de `imageKey`.
+    expect(toOccurrenceRecord(row, '/api/v1/uploads/abc123.png').imageUrl).toBe(
+      '/api/v1/uploads/abc123.png',
+    );
   });
 });
 
@@ -199,14 +210,17 @@ describe('toOccurrenceDetail', () => {
       createdAt: new Date('2026-08-10T10:00:00.000Z'),
     };
 
-    const detail = toOccurrenceDetail({
-      ...baseOccurrenceRow,
-      assignedToId: 'user-gestor',
-      assignedTo: { name: 'Gestor de Teste' },
-      history: [historyRow],
-      comments: [commentRow],
-      rating: ratingRow,
-    });
+    const detail = toOccurrenceDetail(
+      {
+        ...baseOccurrenceRow,
+        assignedToId: 'user-gestor',
+        assignedTo: { name: 'Gestor de Teste' },
+        history: [historyRow],
+        comments: [commentRow],
+        rating: ratingRow,
+      },
+      null,
+    );
 
     expect(detail).toEqual({
       ...baseOccurrenceRow,
@@ -238,12 +252,15 @@ describe('toOccurrenceDetail', () => {
   });
 
   it('devolve rating null quando a ocorrência não foi avaliada', () => {
-    const detail = toOccurrenceDetail({
-      ...baseOccurrenceRow,
-      history: [],
-      comments: [],
-      rating: null,
-    });
+    const detail = toOccurrenceDetail(
+      {
+        ...baseOccurrenceRow,
+        history: [],
+        comments: [],
+        rating: null,
+      },
+      null,
+    );
 
     expect(detail.rating).toBeNull();
     expect(detail.assignedToName).toBeNull();
