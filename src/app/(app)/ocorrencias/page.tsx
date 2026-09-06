@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 
 import { PriorityBadge } from '@/components/occurrences/priority-badge';
 import { StatusBadge } from '@/components/occurrences/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { requireSessionOrRedirect } from '@/core/http/auth-guards';
 import { formatDate } from '@/lib/occurrences/date';
 import {
@@ -31,11 +33,22 @@ interface OcorrenciasPageProps {
 }
 
 /**
- * Server Component: filtros, paginação e a lista em si vêm direto do
- * use-case (`listOccurrences`), sem passar por um `fetch` para a própria API.
- * A guarda é a mesma (`requireSessionOrRedirect`) e o recorte por perfil
- * (solicitante só vê as próprias) é aplicado pelo próprio use-case — nada
- * disso é replicado aqui.
+ * Server Component. O cabeçalho (título, saudação, botão "Nova ocorrência")
+ * não depende de dados além da sessão e renderiza de imediato; a parte que
+ * consulta o banco (`listOccurrences`/`listCategories`) mora em
+ * `OcorrenciasListContent`, isolada num `<Suspense>` próprio desta página —
+ * **não** em `loading.tsx` de segmento.
+ *
+ * Motivo: um `loading.tsx` neste segmento cria um
+ * boundary de streaming sobre toda a subárvore de `ocorrencias/`, incluindo
+ * `ocorrencias/[id]`. Isso fazia o shell da rota de detalhe ser enviado com
+ * `200` antes de o React resolver a árvore até `notFound()` — o `<h1>` de
+ * "não encontrado" só existia no payload de hidratação, nunca no HTML cru,
+ * e o status HTTP nunca virava 404 de verdade. Um `<Suspense>` declarado
+ * aqui dentro, em vez de um arquivo especial de segmento, fica contido a
+ * esta página — `ocorrencias/[id]/page.tsx` volta a renderizar sem streaming
+ * por cima, então `notFound()` decide o HTML e o status antes de qualquer
+ * byte sair.
  */
 export default async function OcorrenciasPage({ searchParams }: OcorrenciasPageProps) {
   const session = await requireSessionOrRedirect();
@@ -44,6 +57,52 @@ export default async function OcorrenciasPage({ searchParams }: OcorrenciasPageP
   const rawSearchParams = await searchParams;
   const filters = readOccurrenceFilters(rawSearchParams);
 
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Ocorrências</h1>
+          <p className="text-muted-foreground text-sm">
+            Olá, {session.user.name}. Aqui você acompanha seus registros.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/ocorrencias/nova">Nova ocorrência</Link>
+        </Button>
+      </div>
+
+      <Suspense fallback={<OcorrenciasListSkeleton />}>
+        <OcorrenciasListContent actor={actor} filters={filters} />
+      </Suspense>
+    </section>
+  );
+}
+
+function OcorrenciasListSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-24 w-full" />
+
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-20 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface OcorrenciasListContentProps {
+  actor: Actor;
+  filters: Record<string, string>;
+}
+
+/**
+ * Filtros, lista/paginação e os dois estados vazios — tudo que depende do
+ * banco. Componente `async` separado só para poder ficar dentro do
+ * `<Suspense>` do componente pai sem bloquear o cabeçalho.
+ */
+async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContentProps) {
   // Reusa o schema do use-case para validar a query string — uma URL com
   // filtro inválido (editada à mão) cai de volta para a primeira página sem
   // filtro em vez de estourar um 500.
@@ -61,19 +120,7 @@ export default async function OcorrenciasPage({ searchParams }: OcorrenciasPageP
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Ocorrências</h1>
-          <p className="text-muted-foreground text-sm">
-            Olá, {session.user.name}. Aqui você acompanha seus registros.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/ocorrencias/nova">Nova ocorrência</Link>
-        </Button>
-      </div>
-
+    <>
       <OccurrenceFilters filters={filters} categories={categories} />
 
       {isEmpty ? (
@@ -155,6 +202,6 @@ export default async function OcorrenciasPage({ searchParams }: OcorrenciasPageP
           </nav>
         </>
       )}
-    </section>
+    </>
   );
 }
