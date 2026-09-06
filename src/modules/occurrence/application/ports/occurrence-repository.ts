@@ -42,6 +42,12 @@ export interface OccurrenceRecord {
   imageKey: string | null;
   createdById: string;
   assignedToId: string | null;
+  /**
+   * `User.name` de `assignedToId`, resolvido pelo repositório (`findById`) —
+   * `null` sempre que `assignedToId` for `null`. Existe para a tela de
+   * detalhe mostrar quem é o responsável sem expor o `id` bruto.
+   */
+  assignedToName: string | null;
   resolutionNote: string | null;
   resolvedAt: Date | null;
   createdAt: Date;
@@ -68,6 +74,12 @@ export interface StatusHistoryEntry {
   toStatus: OccurrenceStatus;
   note: string | null;
   changedById: string;
+  /**
+   * `User.name` de `changedById`, resolvido pelo repositório (`findById`) —
+   * sempre presente: `changedBy` é uma relação obrigatória no schema. Existe
+   * para a timeline do detalhe mostrar quem agiu sem expor o `id` bruto.
+   */
+  changedByName: string;
   createdAt: Date;
 }
 
@@ -75,6 +87,12 @@ export interface CommentEntry {
   id: string;
   occurrenceId: string;
   authorId: string;
+  /**
+   * `User.name` de `authorId`, resolvido pelo repositório (`findById` e
+   * `addComment`) — sempre presente: `author` é uma relação obrigatória no
+   * schema. Mesma justificativa de `StatusHistoryEntry.changedByName`.
+   */
+  authorName: string;
   body: string;
   createdAt: Date;
 }

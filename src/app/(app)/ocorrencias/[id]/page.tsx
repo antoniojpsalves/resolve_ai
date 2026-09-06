@@ -39,17 +39,24 @@ async function fetchDetail(id: string, actor: Actor): Promise<OccurrenceDetail> 
 }
 
 /**
- * Quem apareceu numa entrada de histórico ou num comentário. A API só devolve
- * o `id` de quem agiu (`changedById`/`authorId`), sem nome — não há endpoint
- * de usuários e esta tarefa não pode alterar rotas existentes. Como só
- * `GESTOR` pode fazer qualquer transição além de "autor cancela a própria
- * ABERTA" (`transitions.ts`) e só `GESTOR` ou o autor comentam
- * (`permissions.ts`), qualquer `id` que não seja o do ator logado só pode
- * pertencer à equipe — daí o rótulo genérico em vez de vazar o `id` bruto.
- * Ver observação no relatório sobre enriquecer a API com nome de exibição.
+ * Quem apareceu numa entrada de histórico ou num comentário. `findById`
+ * (`prisma-occurrence-repository.ts`) resolve o nome real (`User.name`) via
+ * `changedBy`/`author`, então o caminho normal mostra a pessoa — nunca um
+ * rótulo genérico nem o `id` bruto.
+ *
+ * Decisão registrada no relatório: quando o ator logado é quem agiu,
+ * mostramos "Você" em vez do próprio nome (convenção comum em timelines/chat
+ * — o usuário não precisa se identificar para si mesmo); para qualquer outra
+ * pessoa, mostramos o nome real. `name` é sempre uma string não vazia vinda
+ * do banco (`User.name` é obrigatório no schema), mas o fallback abaixo
+ * cobre um valor vazio sem nunca cair para o `id`.
  */
-function describeActor(userId: string, actorId: string): string {
-  return userId === actorId ? 'Você' : 'Equipe Resolve Aí';
+function describeActor(userId: string, name: string, actorId: string): string {
+  if (userId === actorId) {
+    return 'Você';
+  }
+
+  return name.trim() || 'Membro da equipe';
 }
 
 export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalhePageProps) {
@@ -110,9 +117,7 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
             <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Responsável
             </p>
-            <p className="text-sm">
-              {detail.assignedToId ? 'Equipe Resolve Aí' : 'Ainda não atribuído'}
-            </p>
+            <p className="text-sm">{detail.assignedToName ?? 'Ainda não atribuído'}</p>
           </div>
 
           {detail.resolutionNote ? (
@@ -162,8 +167,8 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
                 </div>
                 <p className="mt-1 text-sm">
                   {entry.isOpening
-                    ? `Ocorrência aberta por ${describeActor(entry.changedById, actor.id)}`
-                    : `${describeActor(entry.changedById, actor.id)} alterou o status para ${statusLabel(entry.toStatus)}`}
+                    ? `Ocorrência aberta por ${describeActor(entry.changedById, entry.changedByName, actor.id)}`
+                    : `${describeActor(entry.changedById, entry.changedByName, actor.id)} alterou o status para ${statusLabel(entry.toStatus)}`}
                 </p>
                 {entry.note ? (
                   <p className="text-muted-foreground mt-1 text-sm italic">“{entry.note}”</p>
@@ -189,7 +194,7 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
                 <li key={comment.id} className="rounded-md border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">
-                      {describeActor(comment.authorId, actor.id)}
+                      {describeActor(comment.authorId, comment.authorName, actor.id)}
                     </span>
                     <span className="text-muted-foreground text-xs">
                       {formatDateTime(comment.createdAt)}

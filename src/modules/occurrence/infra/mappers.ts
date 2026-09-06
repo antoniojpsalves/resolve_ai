@@ -24,7 +24,19 @@ import type {
  * `infra/`.
  */
 
-export function toOccurrenceRecord(row: PrismaOccurrence): OccurrenceRecord {
+/**
+ * `assignedTo` é opcional na entrada: `create()` (`prisma-occurrence-repository.ts`)
+ * passa a linha crua do `INSERT`, sem relação nenhuma incluída — mas nesse
+ * caso `assignedToId` é sempre `null` (nenhuma ocorrência nasce já atribuída),
+ * então `assignedToName` cai em `null` também, sem precisar de join. Quem
+ * inclui a relação de verdade é `findById` (via `toOccurrenceDetail`), para
+ * ocorrências que já têm um responsável.
+ */
+type OccurrenceRowWithAssignee = PrismaOccurrence & {
+  assignedTo?: { name: string } | null;
+};
+
+export function toOccurrenceRecord(row: OccurrenceRowWithAssignee): OccurrenceRecord {
   return {
     id: row.id,
     code: row.code,
@@ -40,6 +52,7 @@ export function toOccurrenceRecord(row: PrismaOccurrence): OccurrenceRecord {
     imageKey: row.imageKey,
     createdById: row.createdById,
     assignedToId: row.assignedToId,
+    assignedToName: row.assignedTo?.name ?? null,
     resolutionNote: row.resolutionNote,
     resolvedAt: row.resolvedAt,
     createdAt: row.createdAt,
@@ -62,22 +75,30 @@ export function toOccurrenceListItem(row: PrismaOccurrence): OccurrenceListItem 
   };
 }
 
-export function toStatusHistoryEntry(row: PrismaStatusHistory): StatusHistoryEntry {
+/** `changedBy` é relação obrigatória no schema — sempre presente quando `findById` a inclui. */
+type StatusHistoryRowWithUser = PrismaStatusHistory & { changedBy: { name: string } };
+
+export function toStatusHistoryEntry(row: StatusHistoryRowWithUser): StatusHistoryEntry {
   return {
     id: row.id,
     fromStatus: row.fromStatus as OccurrenceStatus | null,
     toStatus: row.toStatus as OccurrenceStatus,
     note: row.note,
     changedById: row.changedById,
+    changedByName: row.changedBy.name,
     createdAt: row.createdAt,
   };
 }
 
-export function toCommentEntry(row: PrismaComment): CommentEntry {
+/** `author` é relação obrigatória no schema — sempre presente quando `findById`/`addComment` a incluem. */
+type CommentRowWithAuthor = PrismaComment & { author: { name: string } };
+
+export function toCommentEntry(row: CommentRowWithAuthor): CommentEntry {
   return {
     id: row.id,
     occurrenceId: row.occurrenceId,
     authorId: row.authorId,
+    authorName: row.author.name,
     body: row.body,
     createdAt: row.createdAt,
   };
@@ -93,8 +114,9 @@ export function toRatingEntry(row: PrismaRating): RatingEntry {
 }
 
 type OccurrenceWithRelations = PrismaOccurrence & {
-  history: PrismaStatusHistory[];
-  comments: PrismaComment[];
+  assignedTo?: { name: string } | null;
+  history: StatusHistoryRowWithUser[];
+  comments: CommentRowWithAuthor[];
   rating: PrismaRating | null;
 };
 

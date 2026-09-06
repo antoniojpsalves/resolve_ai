@@ -170,6 +170,7 @@ describe('createOccurrence', () => {
           imageKey: input.imageKey ?? null,
           createdById: input.createdById,
           assignedToId: null,
+          assignedToName: null,
           resolutionNote: null,
           resolvedAt: null,
           createdAt: new Date('2026-09-01T12:00:00.000Z'),
