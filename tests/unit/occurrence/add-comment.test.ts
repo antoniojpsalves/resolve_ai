@@ -27,6 +27,7 @@ function buildRecord(overrides: Partial<OccurrenceRecord> = {}): OccurrenceRecor
     imageKey: null,
     createdById: ana.id,
     assignedToId: null,
+    assignedToName: null,
     resolutionNote: null,
     resolvedAt: null,
     createdAt: new Date('2026-08-01T10:00:00.000Z'),

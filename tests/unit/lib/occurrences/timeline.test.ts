@@ -9,6 +9,7 @@ function entry(overrides: Partial<TimelineHistoryLike> = {}): TimelineHistoryLik
     toStatus: 'EM_ANALISE',
     note: null,
     changedById: 'user-1',
+    changedByName: 'Usuário de Teste',
     createdAt: new Date('2026-01-02T00:00:00.000Z'),
     ...overrides,
   };

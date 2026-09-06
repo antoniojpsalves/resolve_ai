@@ -7,6 +7,8 @@ export interface TimelineHistoryLike {
   toStatus: OccurrenceStatus;
   note: string | null;
   changedById: string;
+  /** Nome de exibição de quem fez a transição (`User.name`, sempre presente). */
+  changedByName: string;
   createdAt: Date | string;
 }
 
