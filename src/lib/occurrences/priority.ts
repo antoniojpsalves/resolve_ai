@@ -1,7 +1,12 @@
+import { ALL_PRIORITIES } from '@/modules/occurrence/domain/priority';
 import type { Priority } from '@/modules/occurrence/domain/priority';
 
-/** Todas as prioridades, da menos para a mais urgente. */
-export const ALL_PRIORITIES: readonly Priority[] = ['BAIXA', 'MEDIA', 'ALTA', 'URGENTE'];
+/**
+ * Todas as prioridades, da menos para a mais urgente. Reexportada de
+ * `domain/priority.ts`, a única lista de valores (ver comentário lá): esta UI
+ * nunca mantém sua própria cópia.
+ */
+export { ALL_PRIORITIES };
 
 /** Rótulo em português de cada prioridade. */
 const PRIORITY_LABELS: Record<Priority, string> = {

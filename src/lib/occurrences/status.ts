@@ -1,16 +1,13 @@
+import { ALL_STATUSES } from '@/modules/occurrence/domain/status';
 import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
 
 /**
  * Todos os status, na ordem do ciclo de vida — usada para popular filtros e
- * para testar exaustividade dos mapas abaixo.
+ * para testar exaustividade dos mapas abaixo. Reexportada de `domain/status.ts`,
+ * a única lista de valores (ver comentário lá): esta UI nunca mantém sua
+ * própria cópia.
  */
-export const ALL_STATUSES: readonly OccurrenceStatus[] = [
-  'ABERTA',
-  'EM_ANALISE',
-  'EM_ATENDIMENTO',
-  'RESOLVIDA',
-  'CANCELADA',
-];
+export { ALL_STATUSES };
 
 /** Rótulo em português de cada status — única fonte de verdade para exibição. */
 const STATUS_LABELS: Record<OccurrenceStatus, string> = {

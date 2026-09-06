@@ -1,25 +1,10 @@
 import { z } from 'zod';
 
-import type { Priority } from '@/modules/occurrence/domain/priority';
+import { ALL_PRIORITIES } from '@/modules/occurrence/domain/priority';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
-import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
+import { ALL_STATUSES } from '@/modules/occurrence/domain/status';
 
 import type { ListOccurrencesResult, OccurrenceRepository } from './ports/occurrence-repository';
-
-const OCCURRENCE_STATUS_VALUES = [
-  'ABERTA',
-  'EM_ANALISE',
-  'EM_ATENDIMENTO',
-  'RESOLVIDA',
-  'CANCELADA',
-] as const satisfies readonly OccurrenceStatus[];
-
-const PRIORITY_VALUES = [
-  'BAIXA',
-  'MEDIA',
-  'ALTA',
-  'URGENTE',
-] as const satisfies readonly Priority[];
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
@@ -27,9 +12,9 @@ const MAX_PAGE_SIZE = 100;
 
 export const listOccurrencesQuerySchema = z
   .object({
-    status: z.enum(OCCURRENCE_STATUS_VALUES).optional(),
+    status: z.enum(ALL_STATUSES).optional(),
     categoryId: z.string().trim().min(1).optional(),
-    priority: z.enum(PRIORITY_VALUES).optional(),
+    priority: z.enum(ALL_PRIORITIES).optional(),
     q: z.string().trim().min(1).optional(),
     assignedToId: z.string().trim().min(1).optional(),
     page: z.coerce.number().int().min(1).default(DEFAULT_PAGE),
