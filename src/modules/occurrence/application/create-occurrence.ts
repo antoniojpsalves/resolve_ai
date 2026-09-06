@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ConflictError, NotFoundError } from '@/core/errors';
 import { buildOccurrenceCode } from '@/modules/occurrence/domain/protocol';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
+import { isValidUploadKey } from '@/modules/occurrence/domain/upload-key';
 
 import type { CategoryRepository } from './ports/category-repository';
 import {
@@ -15,25 +16,22 @@ import {
 const MAX_SEQUENCE_ATTEMPTS = 5;
 
 /**
- * `imageUrl` aceita tanto uma URL absoluta (`https://...`, o que o Vercel
- * Blob devolve em produção — ver `infra/blob-file-storage.ts`) quanto um
- * caminho relativo iniciado por uma única barra (o que o storage local
- * devolve em desenvolvimento/Docker — `/api/v1/uploads/<key>`, servido por
- * `GET /api/v1/uploads/[...key]`). `z.string().url()` sozinho rejeitaria a
- * segunda forma, que é exatamente o valor real devolvido pelo upload em
- * desenvolvimento.
+ * Só `imageKey` entra na criação — nunca uma URL. A chave é validada com o
+ * mesmo padrão estrito que `GET /api/v1/uploads/[...key]` usa para decidir o
+ * que serve (`isValidUploadKey`, `domain/upload-key.ts`): um usuário
+ * autenticado não pode fazer `POST /occurrences` apontar para um host
+ * arbitrário (ex.: `imageUrl: "https://attacker.tld/px.png"`, renderizado
+ * depois num `<img src>` na tela de detalhe) nem para uma URL
+ * protocol-relative — porque não existe mais campo de URL para preencher. A
+ * URL de leitura é sempre derivada da chave no servidor (ver
+ * `infra/prisma-occurrence-repository.ts`), nunca recebida do cliente.
  *
- * O ramo relativo exige `/` seguida de algo que **não** é outra `/`
- * (`\/(?!\/)`) — sem isso, `//evil.com/x.png` também casaria (a primeira
- * barra satisfaz `\/`, o resto satisfaz `\S+`), e isso é uma URL
- * protocol-relative de verdade: um navegador resolve `src="//evil.com/x.png"`
- * como `https://evil.com/x.png`. Hoje o valor só é guardado e devolvido, mas
- * a UI renderiza `<img src={imageUrl}>` — nesse ponto, aceitar
- * protocol-relative vira carregar recurso de host arbitrário a partir de um
- * campo que deveria apontar só para o próprio storage.
+ * `.strict()` em vez do `.strip()` usado no resto do projeto: este é
+ * exatamente o contrato que já foi contornado uma vez por um campo
+ * (`imageUrl`) que parecia inofensivo e não era. Um cliente que envie um
+ * campo desconhecido — `imageUrl` incluído — recebe um erro explícito em vez
+ * de ver o campo silenciosamente descartado.
  */
-const IMAGE_URL_PATTERN = /^(?:https?:\/\/\S+|\/(?!\/)\S+)$/;
-
 export const createOccurrenceSchema = z
   .object({
     title: z.string().trim().min(1, 'O título é obrigatório'),
@@ -42,10 +40,9 @@ export const createOccurrenceSchema = z
     locationLabel: z.string().trim().min(1, 'A localização é obrigatória'),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
-    imageUrl: z.string().trim().regex(IMAGE_URL_PATTERN, 'URL de imagem inválida').optional(),
-    imageKey: z.string().trim().min(1).optional(),
+    imageKey: z.string().trim().refine(isValidUploadKey, 'Chave de imagem inválida').optional(),
   })
-  .strip();
+  .strict();
 
 export type CreateOccurrenceInput = z.infer<typeof createOccurrenceSchema>;
 
@@ -98,7 +95,6 @@ export async function createOccurrence(
         locationLabel: input.locationLabel,
         latitude: input.latitude,
         longitude: input.longitude,
-        imageUrl: input.imageUrl,
         imageKey: input.imageKey,
         createdById: actor.id,
       });

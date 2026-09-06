@@ -35,8 +35,8 @@ import { MAX_UPLOAD_SIZE_BYTES } from '@/modules/occurrence/application/upload-i
  * Reusa o schema Zod do use-case (`create-occurrence.ts`) em vez de reescrever
  * as regras — mesmo padrão de `register-form.tsx` com `PASSWORD_RULE`. Só os
  * quatro campos de texto entram no formulário: a imagem é tratada à parte
- * (upload prévio, ver `onSubmit`) e `imageUrl`/`imageKey` só existem depois
- * que o upload responde.
+ * (upload prévio, ver `onSubmit`) e `imageKey` só existe depois que o upload
+ * responde.
  */
 const newOccurrenceFormSchema = createOccurrenceSchema.pick({
   title: true,
@@ -152,7 +152,6 @@ export function NewOccurrenceForm({ categories }: { categories: CategorySummary[
     setImageError(null);
 
     try {
-      let imageUrl: string | undefined;
       let imageKey: string | undefined;
 
       if (imageFile) {
@@ -164,16 +163,18 @@ export function NewOccurrenceForm({ categories }: { categories: CategorySummary[
           return;
         }
 
-        imageUrl = uploaded.url;
         imageKey = uploaded.key;
       }
 
       setStage('creating');
 
+      // Só a chave viaja para `POST /occurrences` — o servidor deriva a URL
+      // de leitura a partir dela; nunca enviamos `uploaded.url` (a API não
+      // aceita mais URL de imagem como entrada).
       const response = await fetch('/api/v1/occurrences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, imageUrl, imageKey }),
+        body: JSON.stringify({ ...values, imageKey }),
       });
 
       if (!response.ok) {

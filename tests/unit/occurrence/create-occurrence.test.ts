@@ -39,45 +39,63 @@ describe('createOccurrenceSchema', () => {
     ['locationLabel vazio', { ...validInput, locationLabel: '   ' }],
     ['latitude fora do intervalo', { ...validInput, latitude: 999 }],
     ['longitude fora do intervalo', { ...validInput, longitude: -999 }],
-    ['imageUrl inválida', { ...validInput, imageUrl: 'nao-eh-url' }],
+    ['imageKey com path traversal', { ...validInput, imageKey: '../../.env' }],
+    ['imageKey com extensão não permitida', { ...validInput, imageKey: 'abc123.exe' }],
+    ['imageKey sem extensão', { ...validInput, imageKey: 'abc123' }],
     [
-      'imageUrl protocol-relative (//evil.com/x.png)',
-      { ...validInput, imageUrl: '//evil.com/x.png' },
-    ],
-    [
-      'imageUrl com esquema não http(s) (javascript:alert(1))',
-      { ...validInput, imageUrl: 'javascript:alert(1)' },
+      'imageKey com maiúsculas (fora do padrão gerado pelo servidor)',
+      { ...validInput, imageKey: 'ABC123.png' },
     ],
   ])('rejeita %s', (_label, input) => {
     expect(createOccurrenceSchema.safeParse(input).success).toBe(false);
   });
 
-  it('aceita latitude/longitude/imageUrl/imageKey quando presentes e válidos', () => {
+  it.each([
+    // `imageUrl` deixou de existir no contrato (correção do I1): o schema é
+    // `.strict()` e rejeita qualquer campo desconhecido, então mandar
+    // `imageUrl` — de host arbitrário ou não — nunca mais é aceito, com ou
+    // sem `imageKey` junto.
+    ['imageUrl de host arbitrário', { ...validInput, imageUrl: 'https://attacker.tld/px.png' }],
+    [
+      'imageUrl protocol-relative (//evil.com/x.png)',
+      { ...validInput, imageUrl: '//evil.com/x.png' },
+    ],
+    [
+      'imageUrl válida junto de imageKey válida — campo desconhecido continua rejeitado',
+      {
+        ...validInput,
+        imageUrl: 'https://cdn.resolveai.com/img.png',
+        imageKey: '325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
+      },
+    ],
+    ['status enviado pelo cliente', { ...validInput, status: 'RESOLVIDA' }],
+    ['priority enviada pelo cliente', { ...validInput, priority: 'URGENTE' }],
+  ])(
+    'rejeita %s — campo fora do contrato ("imageUrl" foi removido de propósito)',
+    (_label, input) => {
+      expect(createOccurrenceSchema.safeParse(input).success).toBe(false);
+    },
+  );
+
+  it('aceita latitude/longitude/imageKey quando presentes e válidos', () => {
     const parsed = createOccurrenceSchema.safeParse({
       ...validInput,
       latitude: -23.55,
       longitude: -46.63,
-      imageUrl: 'https://cdn.resolveai.com/img.png',
-      imageKey: 'occurrences/img.png',
-    });
-
-    expect(parsed.success).toBe(true);
-  });
-
-  it('aceita imageUrl relativa — o formato devolvido pelo upload em storage local', () => {
-    const parsed = createOccurrenceSchema.safeParse({
-      ...validInput,
-      imageUrl: '/api/v1/uploads/325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
       imageKey: '325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
     });
 
     expect(parsed.success).toBe(true);
   });
 
-  it('descarta campos desconhecidos (ex.: status/priority enviados pelo cliente)', () => {
-    const parsed = createOccurrenceSchema.parse({ ...validInput, status: 'RESOLVIDA' });
+  it('não expõe imageUrl no tipo/valor de saída — só imageKey entra e sai do schema', () => {
+    const parsed = createOccurrenceSchema.parse({
+      ...validInput,
+      imageKey: '325bd65a-44ab-443f-ac5f-bbe82a064e0d.png',
+    });
 
-    expect(parsed).not.toHaveProperty('status');
+    expect(parsed).not.toHaveProperty('imageUrl');
+    expect(parsed.imageKey).toBe('325bd65a-44ab-443f-ac5f-bbe82a064e0d.png');
   });
 });
 
@@ -166,7 +184,7 @@ describe('createOccurrence', () => {
           locationLabel: input.locationLabel,
           latitude: input.latitude ?? null,
           longitude: input.longitude ?? null,
-          imageUrl: input.imageUrl ?? null,
+          imageUrl: null,
           imageKey: input.imageKey ?? null,
           createdById: input.createdById,
           assignedToId: null,
