@@ -92,7 +92,11 @@ export function createInMemoryOccurrenceRepository(
         locationLabel: input.locationLabel,
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
-        imageUrl: input.imageUrl ?? null,
+        // Simula a derivação real (`prisma-occurrence-repository.ts` +
+        // `FileStorage.urlForKey`): a URL nunca vem do input, só a chave —
+        // este fake reproduz o formato do storage local por ser o mais
+        // simples de montar sem depender de infra.
+        imageUrl: input.imageKey ? `/api/v1/uploads/${input.imageKey}` : null,
         imageKey: input.imageKey ?? null,
         createdById: input.createdById,
         assignedToId: null,

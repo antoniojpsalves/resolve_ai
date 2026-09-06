@@ -13,6 +13,7 @@ import type {
   OccurrenceRepository,
 } from '../application/ports/occurrence-repository';
 import { OccurrenceCodeConflictError } from '../application/ports/occurrence-repository';
+import { fileStorage } from './file-storage';
 import {
   toCommentEntry,
   toOccurrenceDetail,
@@ -77,7 +78,10 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
             locationLabel: input.locationLabel,
             latitude: input.latitude,
             longitude: input.longitude,
-            imageUrl: input.imageUrl,
+            // `imageUrl` não entra aqui de propósito: a coluna fica sempre
+            // null na criação — a URL de leitura é derivada de `imageKey`
+            // pelo `FileStorage` ativo no momento de cada leitura, nunca
+            // gravada (ver `CreateOccurrenceData` e `findById` abaixo).
             imageKey: input.imageKey,
             createdById: input.createdById,
             status: 'ABERTA',
@@ -97,7 +101,9 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
         return occurrence;
       });
 
-      return toOccurrenceRecord(row);
+      const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+      return toOccurrenceRecord(row, imageUrl);
     } catch (error) {
       // Corrida do protocolo (ver `create-occurrence.ts`): dois
       // `POST /occurrences` simultâneos podem ler `nextSequenceForYear`
@@ -156,7 +162,13 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
       },
     });
 
-    return row ? toOccurrenceDetail(row) : null;
+    if (!row) {
+      return null;
+    }
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceDetail(row, imageUrl);
   },
 
   async addComment(input: AddCommentData): Promise<CommentEntry> {

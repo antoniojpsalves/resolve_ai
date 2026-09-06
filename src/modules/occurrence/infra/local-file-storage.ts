@@ -33,6 +33,14 @@ export const localFileStorage: FileStorage = {
 
     return { url: `/api/v1/uploads/${key}`, key };
   },
+
+  // Mesma regra de `save`: a URL é sempre `/api/v1/uploads/<key>`, a rota que
+  // serve o storage local. Não verifica se o arquivo ainda existe em disco —
+  // isso é responsabilidade de quem lê (`readLocalFile`, chamado por essa
+  // rota), o mesmo contrato que `save` já seguia antes desta chave existir.
+  async urlForKey(key: string): Promise<string> {
+    return `/api/v1/uploads/${key}`;
+  },
 };
 
 /**
