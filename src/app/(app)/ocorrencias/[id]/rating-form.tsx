@@ -5,7 +5,7 @@ import { Loader2, Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +19,30 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { rateOccurrenceSchema } from '@/modules/occurrence/application/rate-occurrence';
 
-type RatingFormValues = z.infer<typeof rateOccurrenceSchema>;
+/**
+ * Só para o `zodResolver` deste formulário — não altera `rateOccurrenceSchema`
+ * (contrato do servidor, usado pelos testes de integração). O
+ * `react-hook-form` precisa de `defaultValues.comment = ''` para manter o
+ * `<Textarea>` controlado, mas `comment` é `z.string().trim().min(1).optional()`:
+ * aceita a chave *ausente*, rejeita a chave presente e vazia. Sem este ajuste,
+ * um usuário que nunca toca no campo "opcional" nunca consegue submeter (ver
+ * `docs/sdd/dia-03/fix-wave-brief.md`, Item 1).
+ *
+ * `z.union([literal(''), campo original]).transform(...)` em vez de
+ * `z.preprocess`: o `.transform` preserva o tipo de entrada real do campo
+ * (`string | undefined`) para o `zodResolver`/`useForm`; `z.preprocess`
+ * declara a entrada como `unknown` (limitação do próprio Zod), o que quebra a
+ * inferência de tipos entre `useForm<RatingFormValues>` e o resolver. Só a
+ * string vazia exata vira `undefined` — texto só com espaços continua
+ * reprovado pelo `.trim().min(1)` original, como antes.
+ */
+const formSchema = rateOccurrenceSchema.extend({
+  comment: z
+    .union([z.literal(''), rateOccurrenceSchema.shape.comment])
+    .transform((value) => (value === '' ? undefined : value)),
+});
+
+type RatingFormValues = z.infer<typeof formSchema>;
 
 interface ProblemBody {
   title?: string;
@@ -42,7 +65,7 @@ export function RatingForm({ occurrenceId }: { occurrenceId: string }) {
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
 
   const form = useForm<RatingFormValues>({
-    resolver: zodResolver(rateOccurrenceSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: { score: 0, comment: '' },
   });
 
@@ -51,11 +74,20 @@ export function RatingForm({ occurrenceId }: { occurrenceId: string }) {
   async function onSubmit(values: RatingFormValues) {
     setFormError(null);
 
+    // Corpo montado explicitamente (não `JSON.stringify(values)` direto):
+    // `comment` só entra no body quando o usuário de fato escreveu algo —
+    // não confiamos em `JSON.stringify` para "omitir" uma chave `undefined`
+    // de forma implícita.
+    const body: RatingFormValues = {
+      score: values.score,
+      ...(values.comment ? { comment: values.comment } : {}),
+    };
+
     try {
       const response = await fetch(`/api/v1/occurrences/${occurrenceId}/rating`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
