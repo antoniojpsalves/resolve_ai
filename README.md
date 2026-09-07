@@ -116,13 +116,14 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 Ver `.env.example` para o conjunto completo. Resumo:
 
-| Variável               | Descrição                                                       |
-| ---------------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`         | String de conexão do Postgres principal (usada pela app/Prisma) |
-| `DATABASE_URL_TEST`    | String de conexão do Postgres de testes (`db-test`)             |
-| `AUTH_SECRET`          | Segredo do NextAuth (gere com `openssl rand -base64 32`)        |
-| `AUTH_URL`             | URL base da aplicação para o NextAuth                           |
-| `NEXT_PUBLIC_APP_NAME` | Nome público da aplicação, exposto ao client                    |
+| Variável                | Descrição                                                         |
+| ----------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`          | String de conexão do Postgres principal (usada pela app/Prisma)   |
+| `DATABASE_URL_TEST`     | String de conexão do Postgres de testes (`db-test`)               |
+| `AUTH_SECRET`           | Segredo do NextAuth (gere com `openssl rand -base64 32`)          |
+| `AUTH_URL`              | URL base da aplicação para o NextAuth                             |
+| `NEXT_PUBLIC_APP_NAME`  | Nome público da aplicação, exposto ao client                      |
+| `BLOB_READ_WRITE_TOKEN` | Opcional. Ver "Upload de imagem" abaixo — ausente = storage local |
 
 `.env.example`/`.env` usam `localhost` em `DATABASE_URL`/`DATABASE_URL_TEST`
 porque é o valor correto para quem roda `npm run dev` no host (as portas do
@@ -132,21 +133,85 @@ apontando para os nomes de serviço (`db`/`db-test`) na porta interna
 `5432`, já que dentro da rede do compose `localhost` resolveria para o
 próprio container `app`.
 
+### Upload de imagem (`BLOB_READ_WRITE_TOKEN`)
+
+`POST /api/v1/uploads` grava a imagem enviada num de dois lugares, escolhidos
+automaticamente por `src/modules/occurrence/infra/file-storage.ts` conforme a
+variável `BLOB_READ_WRITE_TOKEN` existir ou não — nenhuma das duas exige
+configuração manual do lado do código:
+
+- **Ausente (padrão em dev e no Docker Compose):** grava em
+  `.storage/uploads/` na raiz do projeto e serve o arquivo de volta por
+  `GET /api/v1/uploads/[...key]` (rota autenticada). Este diretório nunca é
+  versionado (está no `.gitignore`) e não sobrevive a um novo deploy.
+- **Presente (Vercel, com um Blob store conectado ao projeto):** grava no
+  **Vercel Blob**, e a plataforma injeta a variável automaticamente — não é
+  algo que se define à mão no `.env` de produção.
+
+**Consequência de esquecer de conectar o Blob store em produção:** a
+ausência da variável não gera erro de configuração nenhum — o servidor sobe
+normalmente e escolhe `localFileStorage` por padrão, que tenta gravar em
+`.storage/uploads/` num filesystem somente leitura (funções serverless da
+Vercel). O sintoma só aparece no primeiro upload: `POST /api/v1/uploads`
+responde `500`, sem nenhuma pista de que a causa é uma variável de ambiente
+ausente. Antes de qualquer deploy de produção, confirme que um Blob store
+está conectado ao projeto na Vercel.
+
+## Rotas da API
+
+Todas sob `/api/v1`, versão exigida pelo ADR 004. `POST`/`GET` sem detalhe adicional na
+tabela seguem o padrão do projeto: corpo/erro em `application/problem+json`, sessão via
+cookie do NextAuth quando marcada como autenticada.
+
+| Rota                                | Método | Autenticado | Descrição                                                    |
+| ----------------------------------- | ------ | ----------- | ------------------------------------------------------------ |
+| `/api/v1/auth/register`             | POST   | não         | Cadastro de usuário                                          |
+| `/api/v1/auth/[...nextauth]`        | \*     | não         | Login/sessão (Auth.js)                                       |
+| `/api/v1/health`                    | GET    | não         | Healthcheck (toca o schema, não só a conexão)                |
+| `/api/v1/categories`                | GET    | sim         | Lista categorias ativas (para formulário e filtro)           |
+| `/api/v1/occurrences`               | GET    | sim         | Lista ocorrências, com filtro/paginação e recorte por papel  |
+| `/api/v1/occurrences`               | POST   | sim         | Cria uma ocorrência                                          |
+| `/api/v1/occurrences/[id]`          | GET    | sim         | Detalhe de uma ocorrência (404 uniforme — ver ADR 005)       |
+| `/api/v1/occurrences/[id]/history`  | GET    | sim         | Histórico de status (sem consumidor na UI ainda)      |
+| `/api/v1/occurrences/[id]/comments` | POST   | sim         | Adiciona um comentário                                       |
+| `/api/v1/uploads`                   | POST   | sim         | Recebe a imagem (`multipart/form-data`), devolve `imageKey`  |
+| `/api/v1/uploads/[...key]`          | GET    | sim         | Serve o arquivo do storage local (não usado com Vercel Blob) |
+
+Telas autenticadas (`src/app/(app)/`): `/ocorrencias` (lista, com filtros de status,
+categoria, prioridade e busca), `/ocorrencias/nova` (formulário), `/ocorrencias/[id]`
+(detalhe, timeline e comentários) e `/dashboard` (visível só para `GESTOR`).
+
 ## Estrutura do projeto
 
 ```
 src/app/(auth)/        rotas públicas de autenticação
 src/app/(app)/         rotas autenticadas da aplicação
-src/app/api/v1/        rotas de API (REST)
+src/app/api/v1/        rotas de API (REST) — ver "Rotas da API" acima
 src/modules/           módulos de domínio (occurrence, identity, feedback),
                         cada um com domain/application/infra
 src/core/               código transversal (errors, http, db)
+src/lib/                utilitários de UI que não são regra de negócio (ex.:
+                        src/lib/occurrences/: rótulo/cor de status e
+                        prioridade, parsing de filtro da URL — puros,
+                        sem I/O, mas fora de src/modules/ porque não fazem
+                        parte de nenhum módulo de domínio)
 src/components/ui/      componentes gerados pelo shadcn/ui (alias "@/components/ui")
+.storage/uploads/       storage local de imagem (adaptador local de FileStorage;
+                        não versionado, não existe em produção — ver Blob acima)
 tests/unit/             testes unitários (Vitest)
 tests/integration/      testes de integração (Vitest)
 tests/e2e/              testes end-to-end (Playwright)
 docs/adr/               Architecture Decision Records
 ```
+
+**Sobre `feedback/` estar vazio (só `.gitkeep`):** comentário de ocorrência
+(`CommentEntry`, `addComment`) mora em `occurrence/`, não em `feedback/` —
+comentário não tem ciclo de vida próprio, é parte do agregado `Occurrence`
+(criado, listado e lido sempre junto com a ocorrência, nunca sozinho).
+`feedback/` fica reservado para a **avaliação** (nota e comentário do
+solicitante após a resolução), prevista para depois, que sim tem um
+ciclo de vida e regras próprias (só após `RESOLVIDA`, uma vez por
+ocorrência).
 
 ## Usuários de seed
 
