@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canTransition } from '@/modules/occurrence/domain/transitions';
+import { candidateTransitions, canTransition } from '@/modules/occurrence/domain/transitions';
 import type { TransitionCheck } from '@/modules/occurrence/domain/transitions';
 import type { Actor, Occurrence } from '@/modules/occurrence/domain/occurrence';
 import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
@@ -287,5 +287,43 @@ describe('precedência das negativas: terminal > transição inválida > permiss
       {},
     );
     expect(resultado).toEqual({ allowed: false, reason: 'PERMISSAO_NEGADA' });
+  });
+});
+
+describe('candidateTransitions — quais botões a UI deve mostrar', () => {
+  it.each<[OccurrenceStatus, OccurrenceStatus[]]>([
+    ['ABERTA', ['EM_ANALISE', 'CANCELADA']],
+    ['EM_ANALISE', ['EM_ATENDIMENTO', 'CANCELADA']],
+    ['EM_ATENDIMENTO', ['RESOLVIDA', 'CANCELADA']],
+  ])('gestor vê todas as transições válidas a partir de %s: %o', (status, esperado) => {
+    const resultado = candidateTransitions(gestor, buildOccurrence(status));
+    expect(resultado).toEqual(esperado);
+  });
+
+  it('autor vê só CANCELADA quando ABERTA', () => {
+    const resultado = candidateTransitions(autor, buildOccurrence('ABERTA'));
+    expect(resultado).toEqual(['CANCELADA']);
+  });
+
+  it.each<OccurrenceStatus>(['EM_ANALISE', 'EM_ATENDIMENTO'])(
+    'autor vê [] em %s (status não-terminal, mas sem permissão)',
+    (status) => {
+      const resultado = candidateTransitions(autor, buildOccurrence(status));
+      expect(resultado).toEqual([]);
+    },
+  );
+
+  it.each<OccurrenceStatus>(['RESOLVIDA', 'CANCELADA'])(
+    'qualquer ator vê [] num status terminal (%s)',
+    (status) => {
+      expect(candidateTransitions(gestor, buildOccurrence(status))).toEqual([]);
+      expect(candidateTransitions(autor, buildOccurrence(status))).toEqual([]);
+      expect(candidateTransitions(outroSolicitante, buildOccurrence(status))).toEqual([]);
+    },
+  );
+
+  it('outro solicitante (não-autor) vê [] mesmo em ABERTA', () => {
+    const resultado = candidateTransitions(outroSolicitante, buildOccurrence('ABERTA'));
+    expect(resultado).toEqual([]);
   });
 });
