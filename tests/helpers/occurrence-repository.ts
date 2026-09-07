@@ -1,6 +1,7 @@
 import {
   OccurrenceCodeConflictError,
   type AddCommentData,
+  type ChangeStatusData,
   type CommentEntry,
   type CreateOccurrenceData,
   type ListOccurrencesQuery,
@@ -210,6 +211,65 @@ export function createInMemoryOccurrenceRepository(
         .filter((n) => !Number.isNaN(n));
 
       return sequences.length === 0 ? 1 : Math.max(...sequences) + 1;
+    },
+
+    async changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const now = new Date(FIXED_NOW);
+
+      const updated: OccurrenceDetail = {
+        ...row,
+        status: input.toStatus,
+        // Mesma regra da implementação Prisma: só grava
+        // `resolutionNote`/`resolvedAt` quando o destino é `RESOLVIDA`.
+        ...(input.toStatus === 'RESOLVIDA'
+          ? { resolutionNote: input.resolutionNote ?? null, resolvedAt: now }
+          : {}),
+        updatedAt: now,
+      };
+
+      const historyEntry: StatusHistoryEntry = {
+        id: `hist-${nextHistoryId++}`,
+        fromStatus: input.fromStatus,
+        toStatus: input.toStatus,
+        note: input.note ?? null,
+        changedById: input.changedById,
+        changedByName: fakeName(input.changedById),
+        createdAt: now,
+      };
+
+      updated.history = [...row.history, historyEntry];
+
+      rows.set(occurrenceId, updated);
+
+      const record: OccurrenceRecord = {
+        id: updated.id,
+        code: updated.code,
+        title: updated.title,
+        description: updated.description,
+        status: updated.status,
+        priority: updated.priority,
+        categoryId: updated.categoryId,
+        categoryName: updated.categoryName,
+        locationLabel: updated.locationLabel,
+        latitude: updated.latitude,
+        longitude: updated.longitude,
+        imageUrl: updated.imageUrl,
+        imageKey: updated.imageKey,
+        createdById: updated.createdById,
+        assignedToId: updated.assignedToId,
+        assignedToName: updated.assignedToName,
+        resolutionNote: updated.resolutionNote,
+        resolvedAt: updated.resolvedAt,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      };
+
+      return record;
     },
   };
 
