@@ -87,6 +87,26 @@ describe('POST /api/v1/occurrences/[id]/status (integração)', () => {
     expect(response.status).toBe(403);
   });
 
+  it('404 (não 403) quando um SOLICITANTE não-dono tenta mudar o status de ocorrência de outra pessoa', async () => {
+    const category = await createFixtureCategory();
+    const dono = await createFixtureUser({ role: 'SOLICITANTE' });
+    const naoDono = await createFixtureUser({ role: 'SOLICITANTE' });
+    const occurrence = await createFixtureOccurrence({
+      createdById: dono.id,
+      categoryId: category.id,
+      status: 'ABERTA',
+    });
+
+    authMock.mockResolvedValue(sessionFor(naoDono));
+
+    const response = await postStatus(occurrence.id, {
+      toStatus: 'CANCELADA',
+      note: 'Tentativa indevida',
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   it('200 com o gestor movendo ABERTA -> EM_ANALISE, gravando a StatusHistory correta', async () => {
     const category = await createFixtureCategory();
     const solicitante = await createFixtureUser({ role: 'SOLICITANTE' });
