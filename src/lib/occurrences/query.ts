@@ -1,3 +1,10 @@
+import type { z } from 'zod';
+
+import {
+  listOccurrencesQuerySchema,
+  type ListOccurrencesQueryInput,
+} from '@/modules/occurrence/application/list-occurrences';
+
 /** O `page` que some da URL (fica implícito) quando o link volta ao padrão. */
 const DEFAULT_PAGE = 1;
 
@@ -34,6 +41,47 @@ export function readOccurrenceFilters(
 /** `true` quando há algum filtro de conteúdo ativo (não conta `page`/`pageSize`). */
 export function hasActiveFilters(filters: Record<string, string>): boolean {
   return Object.keys(filters).some((key) => !NON_FILTER_KEYS.has(key));
+}
+
+/**
+ * Resultado de validar os filtros da URL: `query` é o que `listOccurrences`
+ * recebe (já com defaults de `page`/`pageSize` aplicados); `applied` é o
+ * subconjunto de `filters` que passou na validação campo a campo — a UI usa
+ * `applied`, nunca `filters`, para refletir o que está de fato em vigor
+ * (`Select` marcado, "Limpar filtros" visível, link de paginação).
+ */
+export interface ParsedOccurrenceFilters {
+  query: ListOccurrencesQueryInput;
+  applied: Record<string, string>;
+}
+
+/**
+ * Valida os filtros da URL campo a campo, contra o mesmo schema Zod do
+ * use-case (`listOccurrencesQuerySchema`) — mas sem o atalho de
+ * `safeParse` do objeto inteiro seguido de `parse({})` no erro, que descarta
+ * TODOS os filtros quando só um é inválido. Reproduzido ao vivo:
+ * `/ocorrencias?status=RESOLVIDA&pageSize=9999` devolvia as 13 ocorrências
+ * (todas, sem filtro de status) porque o `pageSize` fora do intervalo
+ * derrubava o parse inteiro, mas o `Select` continuava marcado "Resolvida" —
+ * a UI usava os filtros crus, não os efetivamente aplicados.
+ *
+ * Um campo inválido é simplesmente omitido antes do parse final — cai no
+ * valor default do schema quando existe (`page`, `pageSize`) ou fica ausente
+ * (os demais), exatamente como se o usuário nunca o tivesse informado.
+ */
+export function parseOccurrenceFilters(filters: Record<string, string>): ParsedOccurrenceFilters {
+  const shape = listOccurrencesQuerySchema.shape;
+  const applied: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(filters)) {
+    const fieldSchema: z.ZodTypeAny | undefined = shape[key as keyof typeof shape];
+
+    if (fieldSchema?.safeParse(value).success) {
+      applied[key] = value;
+    }
+  }
+
+  return { query: listOccurrencesQuerySchema.parse(applied), applied };
 }
 
 /**
