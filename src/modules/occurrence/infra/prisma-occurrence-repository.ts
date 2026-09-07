@@ -4,6 +4,7 @@ import { prisma } from '@/core/db/prisma';
 
 import type {
   AddCommentData,
+  ChangeStatusData,
   CommentEntry,
   CreateOccurrenceData,
   ListOccurrencesQuery,
@@ -207,5 +208,45 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const sequence = Number.parseInt(last.code.slice(prefix.length), 10);
 
     return Number.isNaN(sequence) ? 1 : sequence + 1;
+  },
+
+  async changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord> {
+    // `$transaction`: mesma garantia de `create()` — o `UPDATE` de status e a
+    // entrada de `StatusHistory` são gravados atomicamente, não pode existir
+    // mudança de status sem a entrada de auditoria correspondente.
+    const row = await prisma.$transaction(async (tx) => {
+      const occurrence = await tx.occurrence.update({
+        where: { id: occurrenceId },
+        data: {
+          status: input.toStatus,
+          // Só grava `resolutionNote`/`resolvedAt` quando o destino é
+          // `RESOLVIDA` — nas demais transições (incluindo `CANCELADA`, que
+          // usa `note`, não `resolutionNote`) os dois campos ficam
+          // intocados.
+          ...(input.toStatus === 'RESOLVIDA'
+            ? { resolutionNote: input.resolutionNote, resolvedAt: new Date() }
+            : {}),
+        },
+        // Mesmo `include` de `create()`/`findById()`: devolve um
+        // `OccurrenceRecord` completo sem consulta extra.
+        include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
+      });
+
+      await tx.statusHistory.create({
+        data: {
+          occurrenceId,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+          note: input.note,
+          changedById: input.changedById,
+        },
+      });
+
+      return occurrence;
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
   },
 };
