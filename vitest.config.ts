@@ -6,8 +6,35 @@ export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
     environment: 'node',
-    include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     exclude: ['tests/e2e/**'],
+    // Roda antes de qualquer arquivo de teste (unitário ou integração):
+    // redireciona `DATABASE_URL` para `DATABASE_URL_TEST` quando esta
+    // estiver definida (fluxo local — ver comentário em
+    // `tests/integration/setup.ts`). Inofensivo para os testes unitários,
+    // que não tocam Prisma; no CI, `DATABASE_URL_TEST` não é definida, então
+    // o setup não faz nada lá.
+    setupFiles: ['tests/integration/setup.ts'],
+    // `test.projects`: serializa só `tests/integration/**` (onde o
+    // `resetDatabase()` de cada arquivo, um `TRUNCATE ... CASCADE` contra o
+    // mesmo Postgres de teste no `beforeEach`, corre risco real de deadlock
+    // `40P01`/FK violation entre arquivos concorrentes) e mantém
+    // `tests/unit/**` paralelo (não toca banco, sem essa restrição). Troca
+    // de `fileParallelism: false` global — decisão e verificação registradas
+    // em `docs/sdd/dia-03/fix-wave-relatorio.md`.
+    projects: [
+      {
+        extends: true,
+        test: { name: 'unit', include: ['tests/unit/**/*.test.ts'], fileParallelism: true },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          include: ['tests/integration/**/*.test.ts'],
+          fileParallelism: false,
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

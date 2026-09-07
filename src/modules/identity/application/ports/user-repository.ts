@@ -16,7 +16,10 @@ export interface CreateUserData {
  */
 export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
+  findById(id: string): Promise<User | null>;
   create(data: CreateUserData): Promise<User>;
+  /** Todos os usuários com o `role` informado — usado por `listManagers` para popular os `<Select>` de responsável. */
+  listByRole(role: Role): Promise<User[]>;
 }
 
 /**

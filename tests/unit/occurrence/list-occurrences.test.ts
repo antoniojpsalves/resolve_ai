@@ -103,6 +103,24 @@ describe('listOccurrencesQuerySchema', () => {
   it('rejeita pageSize acima de 100', () => {
     expect(listOccurrencesQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
   });
+
+  it('aplica os defaults de sortBy/sortOrder (createdAt desc) quando omitidos', () => {
+    const parsed = listOccurrencesQuerySchema.parse({});
+
+    expect(parsed.sortBy).toBe('createdAt');
+    expect(parsed.sortOrder).toBe('desc');
+  });
+
+  it('aceita sortBy/sortOrder explícitos dentro do enum', () => {
+    const parsed = listOccurrencesQuerySchema.parse({ sortBy: 'priority', sortOrder: 'asc' });
+
+    expect(parsed).toMatchObject({ sortBy: 'priority', sortOrder: 'asc' });
+  });
+
+  it('rejeita sortBy/sortOrder fora do enum', () => {
+    expect(listOccurrencesQuerySchema.safeParse({ sortBy: 'BANANA' }).success).toBe(false);
+    expect(listOccurrencesQuerySchema.safeParse({ sortOrder: 'BANANA' }).success).toBe(false);
+  });
 });
 
 describe('listOccurrences — escopo por perfil', () => {
@@ -242,6 +260,19 @@ describe('listOccurrences — filtros', () => {
     });
 
     expect(result.data.map((o) => o.id)).toEqual(['occ-bruno-1', 'occ-ana-2', 'occ-ana-1']);
+  });
+
+  it('repassa sortBy/sortOrder para o repositório (aqui, o fake) — priority asc: BAIXA antes de ALTA', async () => {
+    const { repository } = createInMemoryOccurrenceRepository(seed);
+
+    const result = await listOccurrences(
+      listOccurrencesQuerySchema.parse({ sortBy: 'priority', sortOrder: 'asc' }),
+      gestor,
+      { occurrences: repository },
+    );
+
+    // occ-ana-2: BAIXA, occ-bruno-1: MEDIA, occ-ana-1: ALTA
+    expect(result.data.map((o) => o.id)).toEqual(['occ-ana-2', 'occ-bruno-1', 'occ-ana-1']);
   });
 });
 
