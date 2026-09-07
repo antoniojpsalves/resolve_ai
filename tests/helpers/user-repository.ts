@@ -36,6 +36,9 @@ export function createInMemoryUserRepository(seed: User[] = []) {
 
       return user;
     },
+    async listByRole(role) {
+      return [...rows.values()].filter((user) => user.role === role);
+    },
   };
 
   return { repository, rows };

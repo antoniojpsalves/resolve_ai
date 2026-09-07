@@ -60,4 +60,10 @@ export const prismaUserRepository: UserRepository = {
       throw error;
     }
   },
+
+  async listByRole(role: Role): Promise<User[]> {
+    const rows = await prisma.user.findMany({ where: { role } });
+
+    return rows.map(toDomain);
+  },
 };
