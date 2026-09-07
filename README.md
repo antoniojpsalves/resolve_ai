@@ -91,26 +91,61 @@ npm run dev
 
 Acesse [http://localhost:3000](http://localhost:3000).
 
+## Testes de integração
+
+`tests/unit/**` usa fakes em memória (`tests/helpers/`) e não toca banco.
+`tests/integration/**` bate contra um Postgres real — o serviço `db-test` do
+`docker-compose.yml` (porta `5433`, banco `resolve_ai_test`). `npm test` roda
+os dois juntos (`vitest.config.ts` inclui as duas pastas); o passo a passo
+local:
+
+```bash
+docker compose up -d db-test   # só o banco de teste (ou `docker compose up -d` para tudo)
+npm run db:migrate:test        # aplica as migrations no db-test — uma vez, ou após migration nova
+npm test                       # roda unitários e integração juntos
+```
+
+`npm run db:migrate:test` aplica `prisma migrate deploy` contra
+`DATABASE_URL_TEST` (lida do `.env`, sem porta/credencial hardcoded no
+script). `tests/integration/setup.ts` (registrado em `test.setupFiles`) troca
+`process.env.DATABASE_URL` por `DATABASE_URL_TEST` antes de qualquer teste
+rodar, sempre que `DATABASE_URL_TEST` estiver definida — isso evita que
+`npm test` acidentalmente use o banco de desenvolvimento (`DATABASE_URL`,
+porta `5432`, com dados de seed). No CI (`.github/workflows/ci.yml`),
+`DATABASE_URL_TEST` nunca é definida (o workflow já aponta `DATABASE_URL`
+direto para o Postgres de serviço), então esse redirecionamento não dispara
+lá — nada muda no comportamento do CI.
+
+Cada arquivo de teste de integração limpa o banco entre casos com
+`resetDatabase()` (`tests/integration/helpers/db.ts`, `TRUNCATE ... CASCADE`
+num `beforeEach`) e monta suas próprias fixtures via
+`tests/integration/helpers/fixtures.ts` ou diretamente com `prisma` — nunca
+via `prisma/seed.ts` (seed é para dados de demonstração, não fixture
+determinística de teste). `resetDatabase()` recusa rodar se `DATABASE_URL`
+não apontar para um banco cujo nome contenha `_test`, como proteção contra
+truncar o banco de dev por engano.
+
 ## Scripts disponíveis
 
-| Script                 | Descrição                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| `npm run dev`          | Sobe o servidor de desenvolvimento                                           |
-| `npm run build`        | Build de produção                                                            |
-| `npm run start`        | Sobe o build de produção                                                     |
-| `npm run lint`         | ESLint                                                                       |
-| `npm run typecheck`    | Checagem de tipos (`tsc --noEmit`)                                           |
-| `npm run format`       | Formata o código com Prettier                                                |
-| `npm run format:check` | Verifica formatação sem alterar arquivos                                     |
-| `npm run test`         | Testes unitários/integração (Vitest)                                         |
-| `npm run test:watch`   | Vitest em modo watch                                                         |
-| `npm run test:cov`     | Testes com cobertura                                                         |
-| `npm run test:e2e`     | Testes end-to-end (Playwright)                                               |
-| `npm run dev:docker`   | Sobe tudo via `docker compose up --build`                                    |
-| `npm run db:migrate`   | Cria/aplica migrations em desenvolvimento (`prisma migrate dev`)             |
-| `npm run db:reset`     | Reseta o banco e reaplica migrations + seed (`prisma migrate reset --force`) |
-| `npm run db:seed`      | Popula o banco com os dados de seed (`prisma db seed`)                       |
-| `npm run db:studio`    | Abre o Prisma Studio para inspecionar o banco                                |
+| Script                    | Descrição                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `npm run dev`             | Sobe o servidor de desenvolvimento                                           |
+| `npm run build`           | Build de produção                                                            |
+| `npm run start`           | Sobe o build de produção                                                     |
+| `npm run lint`            | ESLint                                                                       |
+| `npm run typecheck`       | Checagem de tipos (`tsc --noEmit`)                                           |
+| `npm run format`          | Formata o código com Prettier                                                |
+| `npm run format:check`    | Verifica formatação sem alterar arquivos                                     |
+| `npm run test`            | Testes unitários/integração (Vitest)                                         |
+| `npm run test:watch`      | Vitest em modo watch                                                         |
+| `npm run test:cov`        | Testes com cobertura                                                         |
+| `npm run test:e2e`        | Testes end-to-end (Playwright)                                               |
+| `npm run dev:docker`      | Sobe tudo via `docker compose up --build`                                    |
+| `npm run db:migrate`      | Cria/aplica migrations em desenvolvimento (`prisma migrate dev`)             |
+| `npm run db:migrate:test` | Aplica migrations no banco de teste (`db-test`, ver "Testes de integração")  |
+| `npm run db:reset`        | Reseta o banco e reaplica migrations + seed (`prisma migrate reset --force`) |
+| `npm run db:seed`         | Popula o banco com os dados de seed (`prisma db seed`)                       |
+| `npm run db:studio`       | Abre o Prisma Studio para inspecionar o banco                                |
 
 ## Variáveis de ambiente
 

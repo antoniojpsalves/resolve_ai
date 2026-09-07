@@ -8,6 +8,13 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
     exclude: ['tests/e2e/**'],
+    // Roda antes de qualquer arquivo de teste (unitário ou integração):
+    // redireciona `DATABASE_URL` para `DATABASE_URL_TEST` quando esta
+    // estiver definida (fluxo local — ver comentário em
+    // `tests/integration/setup.ts`). Inofensivo para os testes unitários,
+    // que não tocam Prisma; no CI, `DATABASE_URL_TEST` não é definida, então
+    // o setup não faz nada lá.
+    setupFiles: ['tests/integration/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
