@@ -61,7 +61,10 @@ export default async function OcorrenciasPage({ searchParams }: OcorrenciasPageP
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Ocorrências</h1>
           <p className="text-muted-foreground text-sm">
-            Olá, {session.user.name}. Aqui você acompanha seus registros.
+            Olá, {session.user.name}.{' '}
+            {actor.role === 'GESTOR'
+              ? 'Aqui você acompanha as ocorrências de todo mundo.'
+              : 'Aqui você acompanha seus registros.'}
           </p>
         </div>
         <Button asChild>
