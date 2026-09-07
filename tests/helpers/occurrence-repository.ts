@@ -1,4 +1,5 @@
 import {
+  OccurrenceAlreadyRatedError,
   OccurrenceCodeConflictError,
   type AddCommentData,
   type ChangeStatusData,
@@ -10,6 +11,7 @@ import {
   type OccurrenceListItem,
   type OccurrenceRecord,
   type OccurrenceRepository,
+  type RateOccurrenceData,
   type RatingEntry,
   type StatusHistoryEntry,
 } from '@/modules/occurrence/application/ports/occurrence-repository';
@@ -107,6 +109,7 @@ export function createInMemoryOccurrenceRepository(
   let nextId = seed.length + 1;
   let nextHistoryId = 1;
   let nextCommentId = 1;
+  let nextRatingId = 1;
 
   const repository: OccurrenceRepository = {
     async create(input: CreateOccurrenceData): Promise<OccurrenceRecord> {
@@ -320,6 +323,31 @@ export function createInMemoryOccurrenceRepository(
       rows.set(occurrenceId, updated);
 
       return toRecord(updated);
+    },
+
+    async rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      // Simula a constraint `@unique` de `Rating.occurrenceId` (mesma
+      // proteção que a implementação Prisma traduz de P2002): já existe uma
+      // avaliação para esta ocorrência no estado interno do fake.
+      if (row.rating) {
+        throw new OccurrenceAlreadyRatedError();
+      }
+
+      const rating: RatingEntry = {
+        id: `rating-${nextRatingId++}`,
+        score: input.score,
+        comment: input.comment ?? null,
+        createdAt: new Date(FIXED_NOW),
+      };
+
+      row.rating = rating;
+
+      return rating;
     },
   };
 
