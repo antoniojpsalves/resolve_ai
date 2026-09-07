@@ -19,6 +19,8 @@ export const listOccurrencesQuerySchema = z
     assignedToId: z.string().trim().min(1).optional(),
     page: z.coerce.number().int().min(1).default(DEFAULT_PAGE),
     pageSize: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+    sortBy: z.enum(['createdAt', 'priority', 'status']).default('createdAt'),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
   })
   .strip();
 
@@ -34,7 +36,12 @@ export interface ListOccurrencesOutput extends ListOccurrencesResult {
 }
 
 /**
- * Lista ocorrências com filtros, ordenação (`createdAt` desc) e paginação.
+ * Lista ocorrências com filtros, ordenação e paginação. `sortBy`/`sortOrder`
+ * têm default `createdAt`/`desc` (comportamento anterior a esta tarefa,
+ * preservado); `sortBy: 'priority'` ordena pela urgência real (BAIXA →
+ * URGENTE em `asc`) porque a implementação Prisma usa a ordem nativa de
+ * declaração do enum `Priority` no Postgres — ver `buildOrderBy` em
+ * `infra/prisma-occurrence-repository.ts`.
  *
  * Escopo por perfil — regra de segurança, não de UI: `GESTOR` vê todas;
  * `SOLICITANTE` vê apenas as próprias (`createdById === actor.id`). O recorte
@@ -59,6 +66,8 @@ export async function listOccurrences(
     createdById: scopedCreatedById,
     page: input.page,
     pageSize: input.pageSize,
+    sortBy: input.sortBy,
+    sortOrder: input.sortOrder,
   });
 
   return { ...result, page: input.page, pageSize: input.pageSize };
