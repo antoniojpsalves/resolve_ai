@@ -224,4 +224,14 @@ export interface OccurrenceRepository {
    * de status sem a entrada de auditoria.
    */
   changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord>;
+  /** Atualiza só `priority`. Não toca em `status`/`assignedToId`/histórico. */
+  updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord>;
+  /**
+   * Atualiza só `assignedToId` — `null` desatribui. Não toca em
+   * `status`/`priority`/histórico: atribuir responsável não é uma transição
+   * de status e não gera entrada em `StatusHistory` (o plano não pede isso;
+   * se quiser registrar "quem atribuiu quem" mais tarde, é decisão de um dia
+   * futuro, não deste escopo).
+   */
+  assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord>;
 }

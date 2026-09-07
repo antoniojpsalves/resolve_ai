@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/core/db/prisma';
+import type { Priority } from '@/modules/occurrence/domain/priority';
 
 import type {
   AddCommentData,
@@ -243,6 +244,34 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
       });
 
       return occurrence;
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord> {
+    // Sem `$transaction`: diferente de `changeStatus`, é um único `UPDATE`
+    // escalar, sem entrada de `StatusHistory` para gravar junto.
+    const row = await prisma.occurrence.update({
+      where: { id: occurrenceId },
+      data: { priority },
+      include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord> {
+    // Mesmo raciocínio de `updatePriority`: um único `UPDATE` escalar, sem
+    // `$transaction` nem entrada de histórico.
+    const row = await prisma.occurrence.update({
+      where: { id: occurrenceId },
+      data: { assignedToId: userId },
+      include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
     });
 
     const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
