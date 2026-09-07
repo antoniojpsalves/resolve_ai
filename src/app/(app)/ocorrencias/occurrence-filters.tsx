@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { buildOccurrencesHref, hasActiveFilters } from '@/lib/occurrences/query';
+import { ALL_PRIORITIES, priorityLabel } from '@/lib/occurrences/priority';
 import { ALL_STATUSES, statusLabel } from '@/lib/occurrences/status';
 import type { CategorySummary } from '@/modules/occurrence/application/ports/category-repository';
 
@@ -91,6 +92,26 @@ export function OccurrenceFilters({ filters, categories }: OccurrenceFiltersProp
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="filter-priority">Prioridade</Label>
+        <Select
+          value={filters.priority ?? ANY_VALUE}
+          onValueChange={(value) => go({ priority: value === ANY_VALUE ? null : value })}
+        >
+          <SelectTrigger id="filter-priority" className="w-full sm:w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ANY_VALUE}>Todas as prioridades</SelectItem>
+            {ALL_PRIORITIES.map((priority) => (
+              <SelectItem key={priority} value={priority}>
+                {priorityLabel(priority)}
               </SelectItem>
             ))}
           </SelectContent>
