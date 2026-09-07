@@ -27,7 +27,10 @@
 *.pem
 /blob-storage/
 
-# uploads locais (Tarefa 3, dia 2) — nunca versionados, ver infra/local-file-storage.ts
+# uploads do storage local de desenvolvimento (gravados em disco pelo
+# adaptador de FileStorage quando BLOB_READ_WRITE_TOKEN não está definido) —
+# binário gerado por upload de usuário, nunca versionado; ver
+# infra/local-file-storage.ts
 /.storage/
 
 # debug

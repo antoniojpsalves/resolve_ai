@@ -37,7 +37,7 @@ interface OcorrenciasPageProps {
  * `OcorrenciasListContent`, isolada num `<Suspense>` próprio desta página —
  * **não** em `loading.tsx` de segmento.
  *
- * Motivo (rodada de correção 1): um `loading.tsx` neste segmento cria um
+ * Motivo: um `loading.tsx` neste segmento cria um
  * boundary de streaming sobre toda a subárvore de `ocorrencias/`, incluindo
  * `ocorrencias/[id]`. Isso fazia o shell da rota de detalhe ser enviado com
  * `200` antes de o React resolver a árvore até `notFound()` — o `<h1>` de

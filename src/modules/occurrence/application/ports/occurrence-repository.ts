@@ -64,8 +64,7 @@ export interface OccurrenceRecord {
   /**
    * `User.name` de `assignedToId`, resolvido pelo repositório (`findById`) —
    * `null` sempre que `assignedToId` for `null`. Existe para a tela de
-   * detalhe mostrar quem é o responsável sem expor o `id` bruto (Tarefa 4,
-   * rodada de correção 1).
+   * detalhe mostrar quem é o responsável sem expor o `id` bruto.
    */
   assignedToName: string | null;
   resolutionNote: string | null;
@@ -99,8 +98,7 @@ export interface StatusHistoryEntry {
   /**
    * `User.name` de `changedById`, resolvido pelo repositório (`findById`) —
    * sempre presente: `changedBy` é uma relação obrigatória no schema. Existe
-   * para a timeline do detalhe mostrar quem agiu sem expor o `id` bruto
-   * (Tarefa 4, rodada de correção 1).
+   * para a timeline do detalhe mostrar quem agiu sem expor o `id` bruto.
    */
   changedByName: string;
   createdAt: Date;

@@ -16,7 +16,8 @@ export interface TimelineEntry extends TimelineHistoryLike {
   /**
    * `true` para a entrada de criação (`fromStatus: null`). A UI precisa
    * tratar esse item como "abertura", não como uma transição vinda de um
-   * status vazio (item do brief da Tarefa 4).
+   * status vazio — `fromStatus: null` nunca é um `OccurrenceStatus` válido,
+   * só o marcador de que a ocorrência acabou de nascer.
    */
   isOpening: boolean;
 }

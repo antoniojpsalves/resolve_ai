@@ -6,7 +6,9 @@ import { prisma } from '@/core/db/prisma';
 export const dynamic = 'force-dynamic';
 
 /**
- * `GET /api/v1/health` — público, usado pelo smoke test do container (Dia 4).
+ * `GET /api/v1/health` — público, usado por um smoke test após o container
+ * subir, para confirmar que a aplicação está no ar e o banco acessível
+ * antes de liberar tráfego.
  *
  * Toca o schema (`SELECT 1 FROM "User" LIMIT 1`), não só a conexão: um
  * `SELECT 1` puro prova que o Postgres está de pé, mas aprovaria uma imagem

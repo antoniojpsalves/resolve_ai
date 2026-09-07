@@ -27,11 +27,11 @@ interface OccurrenceFiltersProps {
 }
 
 /**
- * Filtros por status, categoria e busca por texto — sempre refletidos na URL
- * (query string), nunca só em estado local: link compartilhável e o botão
- * voltar do navegador funcionam (item do brief). Cada mudança de `Select`
- * navega direto; a busca por texto só navega ao enviar o formulário, para não
- * disparar uma navegação a cada tecla digitada.
+ * Filtros por status, categoria, prioridade e busca por texto — sempre
+ * refletidos na URL (query string), nunca só em estado local: link
+ * compartilhável e o botão voltar do navegador funcionam. Cada mudança de
+ * `Select` navega direto; a busca por texto só navega ao enviar o
+ * formulário, para não disparar uma navegação a cada tecla digitada.
  */
 export function OccurrenceFilters({ filters, categories }: OccurrenceFiltersProps) {
   const router = useRouter();

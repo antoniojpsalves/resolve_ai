@@ -11,8 +11,9 @@ export const ALL_PRIORITIES = ['BAIXA', 'MEDIA', 'ALTA', 'URGENTE'] as const;
 export type Priority = (typeof ALL_PRIORITIES)[number];
 
 /**
- * Peso numérico de cada prioridade, para ordenação estável do backlog
- * (Dia 3): quanto maior o peso, mais urgente. `URGENTE > ALTA > MEDIA > BAIXA`.
+ * Peso numérico de cada prioridade, para ordenação estável por urgência
+ * (ex.: um backlog gerencial ordenado por prioridade): quanto maior o peso,
+ * mais urgente. `URGENTE > ALTA > MEDIA > BAIXA`.
  */
 const PRIORITY_WEIGHTS: Record<Priority, number> = {
   BAIXA: 0,
