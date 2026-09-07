@@ -1,3 +1,5 @@
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { PriorityBadge } from '@/components/occurrences/priority-badge';
@@ -27,7 +29,8 @@ async function fetchDetail(id: string, actor: Actor): Promise<OccurrenceDetail> 
   } catch (error) {
     // Mesmo 404 uniforme do use-case para "não existe" e "existe mas não é
     // sua" — a tela (`not-found.tsx` deste segmento) não distingue os dois
-    // casos, de propósito.
+    // casos, de propósito: um 403 aqui confirmaria a quem não deveria saber
+    // que a ocorrência existe (ver ADR 005).
     if (error instanceof NotFoundError) {
       notFound();
     }
@@ -42,12 +45,12 @@ async function fetchDetail(id: string, actor: Actor): Promise<OccurrenceDetail> 
  * `changedBy`/`author`, então o caminho normal mostra a pessoa — nunca um
  * rótulo genérico nem o `id` bruto.
  *
- * Decisão registrada no relatório: quando o ator logado é quem agiu,
- * mostramos "Você" em vez do próprio nome (convenção comum em timelines/chat
- * — o usuário não precisa se identificar para si mesmo); para qualquer outra
- * pessoa, mostramos o nome real. `name` é sempre uma string não vazia vinda
- * do banco (`User.name` é obrigatório no schema), mas o fallback abaixo
- * cobre um valor vazio sem nunca cair para o `id`.
+ * Quando o ator logado é quem agiu, mostramos "Você" em vez do próprio nome
+ * (convenção comum em timelines/chat — o usuário não precisa se identificar
+ * para si mesmo); para qualquer outra pessoa, mostramos o nome real. `name`
+ * é sempre uma string não vazia vinda do banco (`User.name` é obrigatório no
+ * schema), mas o fallback abaixo cobre um valor vazio sem nunca cair para o
+ * `id`.
  */
 function describeActor(userId: string, name: string, actorId: string): string {
   if (userId === actorId) {
@@ -67,6 +70,14 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
 
   return (
     <section className="space-y-6">
+      <Link
+        href="/ocorrencias"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        Voltar para a lista
+      </Link>
+
       <div className="space-y-2">
         <p className="text-muted-foreground font-mono text-sm">{detail.code}</p>
         <h1 className="text-2xl font-semibold tracking-tight">{detail.title}</h1>
