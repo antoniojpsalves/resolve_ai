@@ -1,9 +1,11 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '@/core/db/prisma';
+import type { Priority } from '@/modules/occurrence/domain/priority';
 
 import type {
   AddCommentData,
+  ChangeStatusData,
   CommentEntry,
   CreateOccurrenceData,
   ListOccurrencesQuery,
@@ -11,14 +13,20 @@ import type {
   OccurrenceDetail,
   OccurrenceRecord,
   OccurrenceRepository,
+  RateOccurrenceData,
+  RatingEntry,
 } from '../application/ports/occurrence-repository';
-import { OccurrenceCodeConflictError } from '../application/ports/occurrence-repository';
+import {
+  OccurrenceAlreadyRatedError,
+  OccurrenceCodeConflictError,
+} from '../application/ports/occurrence-repository';
 import { fileStorage } from './file-storage';
 import {
   toCommentEntry,
   toOccurrenceDetail,
   toOccurrenceListItem,
   toOccurrenceRecord,
+  toRatingEntry,
 } from './mappers';
 
 /** Código do Prisma para violação de constraint única (mesmo usado em `prisma-user-repository.ts`). */
@@ -55,6 +63,19 @@ function buildWhere(query: ListOccurrencesQuery): Prisma.OccurrenceWhereInput {
   }
 
   return where;
+}
+
+/**
+ * `{ [query.sortBy]: query.sortOrder }` — sem `CASE WHEN` nem peso calculado
+ * em JS para `priority`: o Postgres ordena um valor de tipo `enum` nativo
+ * pela ordem de **declaração** do tipo, não alfabeticamente, e a ordem de
+ * `enum Priority` em `prisma/schema.prisma` (`BAIXA, MEDIA, ALTA, URGENTE`) já
+ * é a ordem certa de urgência crescente. `ORDER BY priority ASC` já devolve
+ * BAIXA→URGENTE de graça (provado em
+ * `tests/integration/occurrences-patch.test.ts`, não só assumido).
+ */
+function buildOrderBy(query: ListOccurrencesQuery): Prisma.OccurrenceOrderByWithRelationInput {
+  return { [query.sortBy]: query.sortOrder };
 }
 
 /**
@@ -134,7 +155,7 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const [rows, total] = await Promise.all([
       prisma.occurrence.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: buildOrderBy(query),
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
         // `categoryName` resolvido aqui: a tela de lista não busca mais o
@@ -207,5 +228,98 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const sequence = Number.parseInt(last.code.slice(prefix.length), 10);
 
     return Number.isNaN(sequence) ? 1 : sequence + 1;
+  },
+
+  async changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord> {
+    // `$transaction`: mesma garantia de `create()` — o `UPDATE` de status e a
+    // entrada de `StatusHistory` são gravados atomicamente, não pode existir
+    // mudança de status sem a entrada de auditoria correspondente.
+    const row = await prisma.$transaction(async (tx) => {
+      const occurrence = await tx.occurrence.update({
+        where: { id: occurrenceId },
+        data: {
+          status: input.toStatus,
+          // Só grava `resolutionNote`/`resolvedAt` quando o destino é
+          // `RESOLVIDA` — nas demais transições (incluindo `CANCELADA`, que
+          // usa `note`, não `resolutionNote`) os dois campos ficam
+          // intocados.
+          ...(input.toStatus === 'RESOLVIDA'
+            ? { resolutionNote: input.resolutionNote, resolvedAt: new Date() }
+            : {}),
+        },
+        // Mesmo `include` de `create()`/`findById()`: devolve um
+        // `OccurrenceRecord` completo sem consulta extra.
+        include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
+      });
+
+      await tx.statusHistory.create({
+        data: {
+          occurrenceId,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+          note: input.note,
+          changedById: input.changedById,
+        },
+      });
+
+      return occurrence;
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord> {
+    // Sem `$transaction`: diferente de `changeStatus`, é um único `UPDATE`
+    // escalar, sem entrada de `StatusHistory` para gravar junto.
+    const row = await prisma.occurrence.update({
+      where: { id: occurrenceId },
+      data: { priority },
+      include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord> {
+    // Mesmo raciocínio de `updatePriority`: um único `UPDATE` escalar, sem
+    // `$transaction` nem entrada de histórico.
+    const row = await prisma.occurrence.update({
+      where: { id: occurrenceId },
+      data: { assignedToId: userId },
+      include: { category: { select: { name: true } }, assignedTo: { select: { name: true } } },
+    });
+
+    const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
+
+    return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry> {
+    try {
+      const row = await prisma.rating.create({
+        data: { occurrenceId, score: input.score, comment: input.comment },
+      });
+
+      return toRatingEntry(row);
+    } catch (error) {
+      // Rede de segurança para a corrida real (ver `RateOccurrenceData` /
+      // `rate-occurrence.ts`): dois `POST` simultâneos podem passar os dois
+      // pela checagem "já avaliada" do use-case antes de qualquer um
+      // confirmar o `create` — o segundo `INSERT` esbarra na constraint
+      // `@unique` de `Rating.occurrenceId` (P2002). Mesmo padrão de
+      // `create()` acima para `OccurrenceCodeConflictError`.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === UNIQUE_VIOLATION
+      ) {
+        throw new OccurrenceAlreadyRatedError();
+      }
+
+      throw error;
+    }
   },
 };

@@ -22,6 +22,9 @@ export function createInMemoryUserRepository(seed: User[] = []) {
     async findByEmail(email: string) {
       return rows.get(email) ?? null;
     },
+    async findById(id: string) {
+      return [...rows.values()].find((user) => user.id === id) ?? null;
+    },
     async create(data: CreateUserData) {
       const user: User = {
         id: `user-${nextId++}`,
@@ -32,6 +35,9 @@ export function createInMemoryUserRepository(seed: User[] = []) {
       rows.set(user.email, user);
 
       return user;
+    },
+    async listByRole(role) {
+      return [...rows.values()].filter((user) => user.role === role);
     },
   };
 

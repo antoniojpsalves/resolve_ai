@@ -62,6 +62,27 @@ function missingRequiredField(
 }
 
 /**
+ * Lista de status-destino que `actor` pode ao menos tentar a partir do status
+ * atual de `occurrence` — usada pela UI para decidir quais botões de
+ * transição mostrar. **Não substitui** `canTransition`: a UI ainda manda a
+ * requisição real para `POST /occurrences/:id/status`, que valida de novo
+ * (nota obrigatória, status terminal, etc.) do lado do servidor — isto é só
+ * para não mostrar um botão que o servidor com certeza vai rejeitar. Reusa a
+ * mesma `isAuthorized` que `canTransition` já usa internamente, para as duas
+ * nunca divergirem (uma única fonte de verdade sobre "quem pode ir de onde
+ * para onde").
+ */
+export function candidateTransitions(actor: Actor, occurrence: Occurrence): OccurrenceStatus[] {
+  if (isTerminalStatus(occurrence.status)) {
+    return [];
+  }
+
+  return TRANSITIONS[occurrence.status].filter((to) =>
+    isAuthorized(occurrence.status, to, actor, occurrence),
+  );
+}
+
+/**
  * Decide se a transição (from -> to) é permitida para `actor` sobre
  * `occurrence`, dado `input`. Precedência das negativas — importa para a
  * mensagem que o usuário vê: status terminal → transição inválida →

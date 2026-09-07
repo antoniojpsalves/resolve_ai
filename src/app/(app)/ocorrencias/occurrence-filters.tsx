@@ -24,6 +24,17 @@ const ANY_VALUE = 'TODAS';
 interface OccurrenceFiltersProps {
   filters: Record<string, string>;
   categories: CategorySummary[];
+  /** Só passado quando `actor.role === 'GESTOR'` — solicitante não filtra por responsável (não faz sentido para quem só vê as próprias ocorrências). */
+  managers?: { id: string; name: string }[];
+}
+
+/** Rótulo da direção de ordenação — "recentes/antigos" só faz sentido para `createdAt`; os demais `sortBy` usam crescente/decrescente. */
+function sortOrderLabels(sortBy: string): { asc: string; desc: string } {
+  if (sortBy === 'createdAt') {
+    return { desc: 'Mais recentes primeiro', asc: 'Mais antigos primeiro' };
+  }
+
+  return { asc: 'Crescente', desc: 'Decrescente' };
 }
 
 /**
@@ -33,9 +44,11 @@ interface OccurrenceFiltersProps {
  * `Select` navega direto; a busca por texto só navega ao enviar o
  * formulário, para não disparar uma navegação a cada tecla digitada.
  */
-export function OccurrenceFilters({ filters, categories }: OccurrenceFiltersProps) {
+export function OccurrenceFilters({ filters, categories, managers }: OccurrenceFiltersProps) {
   const router = useRouter();
   const [q, setQ] = useState(filters.q ?? '');
+  const sortBy = filters.sortBy ?? 'createdAt';
+  const orderLabels = sortOrderLabels(sortBy);
 
   function go(overrides: Record<string, string | null>) {
     router.push(buildOccurrencesHref(filters, { ...overrides, page: null }));
@@ -117,6 +130,58 @@ export function OccurrenceFilters({ filters, categories }: OccurrenceFiltersProp
           </SelectContent>
         </Select>
       </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="filter-sort-by">Ordenar por</Label>
+        <Select value={sortBy} onValueChange={(value) => go({ sortBy: value })}>
+          <SelectTrigger id="filter-sort-by" className="w-full sm:w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt">Data de abertura</SelectItem>
+            <SelectItem value="priority">Prioridade</SelectItem>
+            <SelectItem value="status">Status</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="filter-sort-order">Direção</Label>
+        <Select
+          value={filters.sortOrder ?? 'desc'}
+          onValueChange={(value) => go({ sortOrder: value })}
+        >
+          <SelectTrigger id="filter-sort-order" className="w-full sm:w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">{orderLabels.desc}</SelectItem>
+            <SelectItem value="asc">{orderLabels.asc}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {managers ? (
+        <div className="grid gap-1.5">
+          <Label htmlFor="filter-assigned">Responsável</Label>
+          <Select
+            value={filters.assignedToId ?? ANY_VALUE}
+            onValueChange={(value) => go({ assignedToId: value === ANY_VALUE ? null : value })}
+          >
+            <SelectTrigger id="filter-assigned" className="w-full sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ANY_VALUE}>Todos os responsáveis</SelectItem>
+              {managers.map((manager) => (
+                <SelectItem key={manager.id} value={manager.id}>
+                  {manager.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       <div className="grid flex-1 gap-1.5">
         <Label htmlFor="filter-q">Buscar</Label>

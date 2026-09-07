@@ -125,6 +125,15 @@ export interface RatingEntry {
   createdAt: Date;
 }
 
+/**
+ * Dados para `rate()`. `score`/`comment` já vêm validados pelo `rateOccurrenceSchema`
+ * (use-case) — esta porta não repete a validação de faixa/tamanho, só persiste.
+ */
+export interface RateOccurrenceData {
+  score: number;
+  comment?: string;
+}
+
 /** Detalhe completo: `OccurrenceRecord` mais histórico, comentários e avaliação. */
 export interface OccurrenceDetail extends OccurrenceRecord {
   history: StatusHistoryEntry[];
@@ -146,6 +155,8 @@ export interface ListOccurrencesQuery {
   createdById?: string;
   page: number;
   pageSize: number;
+  sortBy: 'createdAt' | 'priority' | 'status';
+  sortOrder: 'asc' | 'desc';
 }
 
 export interface ListOccurrencesResult {
@@ -160,6 +171,31 @@ export interface AddCommentData {
 }
 
 /**
+ * Dados para `changeStatus`. `toStatus` já veio validado por `canTransition`
+ * (o use-case `change-occurrence-status.ts` só chama o repositório quando
+ * `allowed: true`) — esta porta não repete a validação de transição, só
+ * persiste o resultado.
+ *
+ * Inclui `fromStatus`, além dos quatro campos do enunciado da tarefa: o
+ * use-case já carregou o `OccurrenceDetail` para checar `canTransition` e
+ * sabe o status atual — pedir para o repositório reler a linha dentro da
+ * transação só para descobrir o `fromStatus` seria uma consulta extra sem
+ * necessidade, e a implementação precisa desse valor para gravar
+ * `StatusHistory.fromStatus` (não existe "ler de volta do UPDATE": o Prisma
+ * não expõe o valor anterior da linha, só o que ficou depois de atualizar).
+ * Esta é a opção "receber `from` explícito" mencionada como preferida na
+ * tarefa — mantém a porta simétrica ao que o use-case já validou, em vez de
+ * reler dentro da transação.
+ */
+export interface ChangeStatusData {
+  fromStatus: OccurrenceStatus;
+  toStatus: OccurrenceStatus;
+  note?: string;
+  resolutionNote?: string;
+  changedById: string;
+}
+
+/**
  * Sinaliza que o `code` calculado por `nextSequenceForYear` + `buildOccurrenceCode`
  * colidiu com um `code` já existente — a corrida descrita em `create-occurrence.ts`.
  * Não é um `AppError`: nunca deve vazar para o cliente HTTP, é consumida
@@ -171,6 +207,22 @@ export class OccurrenceCodeConflictError extends Error {
   constructor() {
     super('O código de protocolo calculado já está em uso.');
     this.name = 'OccurrenceCodeConflictError';
+  }
+}
+
+/**
+ * Sinaliza que já existe uma `Rating` para a ocorrência — `Rating.occurrenceId`
+ * é `@unique` (`schema.prisma`). Não é um `AppError`: nunca deve vazar para o
+ * cliente HTTP, é consumida internamente pelo use-case `rateOccurrence`, que já
+ * checa `OccurrenceDetail.rating !== null` antes de chamar `rate()` — este erro
+ * só deveria aparecer numa corrida real (dois `POST` simultâneos passando os
+ * dois pela checagem antes de qualquer um confirmar o `create`), é a defesa de
+ * segunda camada, não a primeira. Mesmo padrão de `OccurrenceCodeConflictError`.
+ */
+export class OccurrenceAlreadyRatedError extends Error {
+  constructor() {
+    super('Esta ocorrência já foi avaliada.');
+    this.name = 'OccurrenceAlreadyRatedError';
   }
 }
 
@@ -192,4 +244,31 @@ export interface OccurrenceRepository {
   addComment(input: AddCommentData): Promise<CommentEntry>;
   /** Maior sequência já usada no ano + 1 (ou 1, se nenhuma ocorrência do ano existir). */
   nextSequenceForYear(year: number): Promise<number>;
+  /**
+   * Atualiza `status` (e `resolutionNote`/`resolvedAt` quando o destino é
+   * `RESOLVIDA`) e insere a entrada de `StatusHistory` correspondente na
+   * mesma transação — mesma garantia de `create()`: não pode existir mudança
+   * de status sem a entrada de auditoria.
+   */
+  changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord>;
+  /** Atualiza só `priority`. Não toca em `status`/`assignedToId`/histórico. */
+  updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord>;
+  /**
+   * Atualiza só `assignedToId` — `null` desatribui. Não toca em
+   * `status`/`priority`/histórico: atribuir responsável não é uma transição
+   * de status e não gera entrada em `StatusHistory` (não é um requisito hoje;
+   * se quiser registrar "quem atribuiu quem" mais tarde, é uma decisão
+   * futura).
+   */
+  assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord>;
+  /**
+   * Cria a avaliação de uma ocorrência. `Rating.occurrenceId` é `@unique`
+   * (`schema.prisma`) — chamar isto duas vezes para a mesma ocorrência lança
+   * (a implementação Prisma traduz o P2002 para `OccurrenceAlreadyRatedError`,
+   * mesmo padrão de `OccurrenceCodeConflictError`). O use-case checa
+   * "já avaliada" antes de chamar isto (via `OccurrenceDetail.rating`), então
+   * este erro só deveria aparecer numa corrida real — é a defesa de segunda
+   * camada, não a primeira.
+   */
+  rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry>;
 }
