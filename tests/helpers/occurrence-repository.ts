@@ -13,6 +13,7 @@ import {
   type RatingEntry,
   type StatusHistoryEntry,
 } from '@/modules/occurrence/application/ports/occurrence-repository';
+import type { Priority } from '@/modules/occurrence/domain/priority';
 
 const FIXED_NOW = new Date('2026-09-01T12:00:00.000Z');
 
@@ -37,6 +38,32 @@ function fakeName(id: string): string {
  */
 function fakeCategoryName(categoryId: string): string {
   return `Categoria de teste (${categoryId})`;
+}
+
+/** Projeta um `OccurrenceDetail` guardado no fake para o `OccurrenceRecord` que os métodos de escrita devolvem — evita repetir os mesmos 20 campos em `changeStatus`/`updatePriority`/`assignResponsible`. */
+function toRecord(detail: OccurrenceDetail): OccurrenceRecord {
+  return {
+    id: detail.id,
+    code: detail.code,
+    title: detail.title,
+    description: detail.description,
+    status: detail.status,
+    priority: detail.priority,
+    categoryId: detail.categoryId,
+    categoryName: detail.categoryName,
+    locationLabel: detail.locationLabel,
+    latitude: detail.latitude,
+    longitude: detail.longitude,
+    imageUrl: detail.imageUrl,
+    imageKey: detail.imageKey,
+    createdById: detail.createdById,
+    assignedToId: detail.assignedToId,
+    assignedToName: detail.assignedToName,
+    resolutionNote: detail.resolutionNote,
+    resolvedAt: detail.resolvedAt,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+  };
 }
 
 export type FakeOccurrenceSeed = OccurrenceRecord & {
@@ -246,30 +273,39 @@ export function createInMemoryOccurrenceRepository(
 
       rows.set(occurrenceId, updated);
 
-      const record: OccurrenceRecord = {
-        id: updated.id,
-        code: updated.code,
-        title: updated.title,
-        description: updated.description,
-        status: updated.status,
-        priority: updated.priority,
-        categoryId: updated.categoryId,
-        categoryName: updated.categoryName,
-        locationLabel: updated.locationLabel,
-        latitude: updated.latitude,
-        longitude: updated.longitude,
-        imageUrl: updated.imageUrl,
-        imageKey: updated.imageKey,
-        createdById: updated.createdById,
-        assignedToId: updated.assignedToId,
-        assignedToName: updated.assignedToName,
-        resolutionNote: updated.resolutionNote,
-        resolvedAt: updated.resolvedAt,
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt,
-      };
+      return toRecord(updated);
+    },
 
-      return record;
+    async updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const updated: OccurrenceDetail = { ...row, priority, updatedAt: new Date(FIXED_NOW) };
+      rows.set(occurrenceId, updated);
+
+      return toRecord(updated);
+    },
+
+    async assignResponsible(
+      occurrenceId: string,
+      userId: string | null,
+    ): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const updated: OccurrenceDetail = {
+        ...row,
+        assignedToId: userId,
+        assignedToName: userId ? fakeName(userId) : null,
+        updatedAt: new Date(FIXED_NOW),
+      };
+      rows.set(occurrenceId, updated);
+
+      return toRecord(updated);
     },
   };
 
