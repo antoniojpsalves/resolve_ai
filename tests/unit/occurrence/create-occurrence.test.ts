@@ -212,6 +212,12 @@ describe('createOccurrence', () => {
       async changeStatus() {
         throw new Error('não usado neste teste');
       },
+      async updatePriority() {
+        throw new Error('não usado neste teste');
+      },
+      async assignResponsible() {
+        throw new Error('não usado neste teste');
+      },
     };
 
     const result = await createOccurrence(validInput, actor, deps(occurrences));
