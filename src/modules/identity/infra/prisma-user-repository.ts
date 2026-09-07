@@ -32,6 +32,12 @@ export const prismaUserRepository: UserRepository = {
     return row ? toDomain(row) : null;
   },
 
+  async findById(id: string): Promise<User | null> {
+    const row = await prisma.user.findUnique({ where: { id } });
+
+    return row ? toDomain(row) : null;
+  },
+
   async create(data: CreateUserData): Promise<User> {
     try {
       const row = await prisma.user.create({ data });
@@ -53,5 +59,11 @@ export const prismaUserRepository: UserRepository = {
 
       throw error;
     }
+  },
+
+  async listByRole(role: Role): Promise<User[]> {
+    const rows = await prisma.user.findMany({ where: { role } });
+
+    return rows.map(toDomain);
   },
 };

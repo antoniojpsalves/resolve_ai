@@ -1,6 +1,8 @@
 import {
+  OccurrenceAlreadyRatedError,
   OccurrenceCodeConflictError,
   type AddCommentData,
+  type ChangeStatusData,
   type CommentEntry,
   type CreateOccurrenceData,
   type ListOccurrencesQuery,
@@ -9,9 +11,11 @@ import {
   type OccurrenceListItem,
   type OccurrenceRecord,
   type OccurrenceRepository,
+  type RateOccurrenceData,
   type RatingEntry,
   type StatusHistoryEntry,
 } from '@/modules/occurrence/application/ports/occurrence-repository';
+import { priorityWeight, type Priority } from '@/modules/occurrence/domain/priority';
 
 const FIXED_NOW = new Date('2026-09-01T12:00:00.000Z');
 
@@ -36,6 +40,32 @@ function fakeName(id: string): string {
  */
 function fakeCategoryName(categoryId: string): string {
   return `Categoria de teste (${categoryId})`;
+}
+
+/** Projeta um `OccurrenceDetail` guardado no fake para o `OccurrenceRecord` que os métodos de escrita devolvem — evita repetir os mesmos 20 campos em `changeStatus`/`updatePriority`/`assignResponsible`. */
+function toRecord(detail: OccurrenceDetail): OccurrenceRecord {
+  return {
+    id: detail.id,
+    code: detail.code,
+    title: detail.title,
+    description: detail.description,
+    status: detail.status,
+    priority: detail.priority,
+    categoryId: detail.categoryId,
+    categoryName: detail.categoryName,
+    locationLabel: detail.locationLabel,
+    latitude: detail.latitude,
+    longitude: detail.longitude,
+    imageUrl: detail.imageUrl,
+    imageKey: detail.imageKey,
+    createdById: detail.createdById,
+    assignedToId: detail.assignedToId,
+    assignedToName: detail.assignedToName,
+    resolutionNote: detail.resolutionNote,
+    resolvedAt: detail.resolvedAt,
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+  };
 }
 
 export type FakeOccurrenceSeed = OccurrenceRecord & {
@@ -79,6 +109,7 @@ export function createInMemoryOccurrenceRepository(
   let nextId = seed.length + 1;
   let nextHistoryId = 1;
   let nextCommentId = 1;
+  let nextRatingId = 1;
 
   const repository: OccurrenceRepository = {
     async create(input: CreateOccurrenceData): Promise<OccurrenceRecord> {
@@ -153,7 +184,21 @@ export function createInMemoryOccurrenceRepository(
         );
       }
 
-      data = [...data].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      // Mesma ordenação de `buildOrderBy` (`prisma-occurrence-repository.ts`),
+      // reproduzida em JS: `priority` usa `priorityWeight` (o fake não tem um
+      // enum nativo do Postgres para se apoiar), os demais campos comparam
+      // diretamente.
+      const direction = query.sortOrder === 'asc' ? 1 : -1;
+      data = [...data].sort((a, b) => {
+        const cmp =
+          query.sortBy === 'priority'
+            ? priorityWeight(a.priority) - priorityWeight(b.priority)
+            : query.sortBy === 'status'
+              ? a.status.localeCompare(b.status)
+              : a.createdAt.getTime() - b.createdAt.getTime();
+
+        return cmp * direction;
+      });
 
       const total = data.length;
       const start = (query.page - 1) * query.pageSize;
@@ -210,6 +255,99 @@ export function createInMemoryOccurrenceRepository(
         .filter((n) => !Number.isNaN(n));
 
       return sequences.length === 0 ? 1 : Math.max(...sequences) + 1;
+    },
+
+    async changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const now = new Date(FIXED_NOW);
+
+      const updated: OccurrenceDetail = {
+        ...row,
+        status: input.toStatus,
+        // Mesma regra da implementação Prisma: só grava
+        // `resolutionNote`/`resolvedAt` quando o destino é `RESOLVIDA`.
+        ...(input.toStatus === 'RESOLVIDA'
+          ? { resolutionNote: input.resolutionNote ?? null, resolvedAt: now }
+          : {}),
+        updatedAt: now,
+      };
+
+      const historyEntry: StatusHistoryEntry = {
+        id: `hist-${nextHistoryId++}`,
+        fromStatus: input.fromStatus,
+        toStatus: input.toStatus,
+        note: input.note ?? null,
+        changedById: input.changedById,
+        changedByName: fakeName(input.changedById),
+        createdAt: now,
+      };
+
+      updated.history = [...row.history, historyEntry];
+
+      rows.set(occurrenceId, updated);
+
+      return toRecord(updated);
+    },
+
+    async updatePriority(occurrenceId: string, priority: Priority): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const updated: OccurrenceDetail = { ...row, priority, updatedAt: new Date(FIXED_NOW) };
+      rows.set(occurrenceId, updated);
+
+      return toRecord(updated);
+    },
+
+    async assignResponsible(
+      occurrenceId: string,
+      userId: string | null,
+    ): Promise<OccurrenceRecord> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      const updated: OccurrenceDetail = {
+        ...row,
+        assignedToId: userId,
+        assignedToName: userId ? fakeName(userId) : null,
+        updatedAt: new Date(FIXED_NOW),
+      };
+      rows.set(occurrenceId, updated);
+
+      return toRecord(updated);
+    },
+
+    async rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry> {
+      const row = rows.get(occurrenceId);
+      if (!row) {
+        throw new Error(`Ocorrência ${occurrenceId} não encontrada no fake`);
+      }
+
+      // Simula a constraint `@unique` de `Rating.occurrenceId` (mesma
+      // proteção que a implementação Prisma traduz de P2002): já existe uma
+      // avaliação para esta ocorrência no estado interno do fake.
+      if (row.rating) {
+        throw new OccurrenceAlreadyRatedError();
+      }
+
+      const rating: RatingEntry = {
+        id: `rating-${nextRatingId++}`,
+        score: input.score,
+        comment: input.comment ?? null,
+        createdAt: new Date(FIXED_NOW),
+      };
+
+      row.rating = rating;
+
+      return rating;
     },
   };
 

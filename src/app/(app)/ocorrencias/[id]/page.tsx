@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Star } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -12,12 +12,19 @@ import { requireSessionOrRedirect } from '@/core/http/auth-guards';
 import { formatDateTime } from '@/lib/occurrences/date';
 import { statusLabel } from '@/lib/occurrences/status';
 import { buildTimeline } from '@/lib/occurrences/timeline';
+import { listManagers } from '@/modules/identity/application/list-managers';
+import { prismaUserRepository } from '@/modules/identity/infra/prisma-user-repository';
 import { getOccurrence } from '@/modules/occurrence/application/get-occurrence';
 import type { OccurrenceDetail } from '@/modules/occurrence/application/ports/occurrence-repository';
+import { toDomainOccurrence } from '@/modules/occurrence/application/to-domain-occurrence';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
+import { candidateTransitions } from '@/modules/occurrence/domain/transitions';
 import { prismaOccurrenceRepository } from '@/modules/occurrence/infra/prisma-occurrence-repository';
 
 import { CommentForm } from './comment-form';
+import { ManagementPanel } from './management-panel';
+import { RatingForm } from './rating-form';
+import { StatusTransitionPanel } from './status-transition-panel';
 
 interface OcorrenciaDetalhePageProps {
   params: Promise<{ id: string }>;
@@ -65,8 +72,18 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
   const actor: Actor = { id: session.user.id, role: session.user.role };
   const { id } = await params;
 
-  const detail = await fetchDetail(id, actor);
+  // `listManagers` só é buscado para o gestor (é o único papel que vê
+  // `ManagementPanel`) — em paralelo com `fetchDetail`, mesmo padrão de
+  // `ocorrencias/page.tsx` buscando `listOccurrences`+`listCategories` juntos.
+  const [detail, managers] = await Promise.all([
+    fetchDetail(id, actor),
+    actor.role === 'GESTOR' ? listManagers({ users: prismaUserRepository }) : Promise.resolve([]),
+  ]);
+
   const timeline = buildTimeline(detail.history);
+  const candidates = candidateTransitions(actor, toDomainOccurrence(detail));
+  const canRate =
+    actor.id === detail.createdById && detail.status === 'RESOLVIDA' && detail.rating === null;
 
   return (
     <section className="space-y-6">
@@ -145,6 +162,56 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
               alt={`Imagem enviada com a ocorrência ${detail.code}: ${detail.title}`}
               className="max-h-96 w-full rounded-md border object-contain"
             />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <StatusTransitionPanel occurrenceId={detail.id} candidates={candidates} />
+
+      {actor.role === 'GESTOR' ? (
+        <ManagementPanel
+          occurrenceId={detail.id}
+          currentPriority={detail.priority}
+          currentAssignedToId={detail.assignedToId}
+          managers={managers}
+        />
+      ) : null}
+
+      {detail.rating !== null ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2 className="text-lg font-semibold">Avaliação</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex gap-1" aria-hidden>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <Star
+                  key={value}
+                  className={
+                    value <= detail.rating!.score
+                      ? 'fill-amber-400 text-amber-400'
+                      : 'text-muted-foreground'
+                  }
+                />
+              ))}
+            </div>
+            <p className="sr-only">{detail.rating.score} de 5 estrelas</p>
+            {detail.rating.comment ? (
+              <p className="text-sm whitespace-pre-wrap">{detail.rating.comment}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : canRate ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2 className="text-lg font-semibold">Avaliar atendimento</h2>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RatingForm occurrenceId={detail.id} />
           </CardContent>
         </Card>
       ) : null}
