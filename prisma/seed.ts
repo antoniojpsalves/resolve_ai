@@ -6,13 +6,13 @@ import { hashPassword } from '../src/modules/identity/infra/password';
 /**
  * Seed determinístico: mesma execução -> mesmos dados de negócio.
  *
- * Duas exceções inerentes à natureza das ferramentas usadas (documentadas
- * também no relatório da Tarefa 2):
+ * Duas exceções inerentes à natureza das ferramentas usadas:
  *  - `passwordHash` (bcrypt) embute um salt aleatório gerado pela própria
  *    lib a cada chamada; o valor do hash muda a cada execução, mas a senha
  *    em texto plano ("Senha@123") continua válida em ambas (verifyPassword
  *    sempre retorna true). Não é possível fixar o salt sem alterar o
- *    contrato de `password.ts` compartilhado com a Tarefa 3.
+ *    contrato de `password.ts`, compartilhado com o provider Credentials do
+ *    NextAuth (`src/auth.ts`) — mudar a assinatura ali quebraria o login.
  *  - Os `id` (cuid()) são gerados pelo Prisma a cada inserção e não são
  *    determináveis pelo PRNG local; como as tabelas são limpas e
  *    recriadas do zero a cada rodada, isso não afeta a igualdade dos
