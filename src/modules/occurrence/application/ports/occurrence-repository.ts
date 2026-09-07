@@ -40,6 +40,15 @@ export interface OccurrenceRecord {
   status: OccurrenceStatus;
   priority: Priority;
   categoryId: string;
+  /**
+   * `Category.name` resolvido via `include: { category: { select: { name: true } } }`
+   * pelo repositório — nunca buscado à parte (ver `listCategories` só serve
+   * o `<Select>` de filtro/formulário, não a resolução de nome). Sempre
+   * presente: `category` é relação obrigatória no schema, e o join não filtra
+   * por `active` — uma ocorrência cuja categoria foi desativada depois
+   * continua mostrando o nome histórico, em vez de "Categoria removida".
+   */
+  categoryName: string;
   locationLabel: string;
   latitude: number | null;
   longitude: number | null;
@@ -72,6 +81,8 @@ export interface OccurrenceListItem {
   status: OccurrenceStatus;
   priority: Priority;
   categoryId: string;
+  /** Mesma resolução de `OccurrenceRecord.categoryName` — ver o comentário lá. */
+  categoryName: string;
   locationLabel: string;
   createdById: string;
   assignedToId: string | null;

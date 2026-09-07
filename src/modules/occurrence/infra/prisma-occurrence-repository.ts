@@ -87,6 +87,9 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
             status: 'ABERTA',
             priority: 'MEDIA',
           },
+          // `categoryName` (`OccurrenceRecord`) sai daqui: resolver o nome no
+          // mesmo INSERT evita uma segunda consulta logo depois de criar.
+          include: { category: { select: { name: true } } },
         });
 
         await tx.statusHistory.create({
@@ -134,6 +137,9 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
         orderBy: { createdAt: 'desc' },
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
+        // `categoryName` resolvido aqui: a tela de lista não busca mais o
+        // catálogo inteiro para fazer join na mão (ver `OccurrenceListItem`).
+        include: { category: { select: { name: true } } },
       }),
       prisma.occurrence.count({ where }),
     ]);
@@ -147,8 +153,9 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
       include: {
         // `select: { name: true }` em vez de `include` puro: só o nome de
         // exibição precisa sair do banco, nunca o hash de senha ou o e-mail
-        // (ver `mappers.ts` — `changedByName`/`authorName`/`assignedToName`
-        // resolvem o `id` bruto para a UI).
+        // (ver `mappers.ts` — `changedByName`/`authorName`/`assignedToName`/
+        // `categoryName` resolvem o `id` bruto para a UI).
+        category: { select: { name: true } },
         assignedTo: { select: { name: true } },
         history: {
           orderBy: { createdAt: 'asc' },
