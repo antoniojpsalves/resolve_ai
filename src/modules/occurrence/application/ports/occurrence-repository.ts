@@ -146,6 +146,8 @@ export interface ListOccurrencesQuery {
   createdById?: string;
   page: number;
   pageSize: number;
+  sortBy: 'createdAt' | 'priority' | 'status';
+  sortOrder: 'asc' | 'desc';
 }
 
 export interface ListOccurrencesResult {

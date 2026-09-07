@@ -13,7 +13,7 @@ import {
   type RatingEntry,
   type StatusHistoryEntry,
 } from '@/modules/occurrence/application/ports/occurrence-repository';
-import type { Priority } from '@/modules/occurrence/domain/priority';
+import { priorityWeight, type Priority } from '@/modules/occurrence/domain/priority';
 
 const FIXED_NOW = new Date('2026-09-01T12:00:00.000Z');
 
@@ -181,7 +181,21 @@ export function createInMemoryOccurrenceRepository(
         );
       }
 
-      data = [...data].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      // Mesma ordenação de `buildOrderBy` (`prisma-occurrence-repository.ts`),
+      // reproduzida em JS: `priority` usa `priorityWeight` (o fake não tem um
+      // enum nativo do Postgres para se apoiar), os demais campos comparam
+      // diretamente.
+      const direction = query.sortOrder === 'asc' ? 1 : -1;
+      data = [...data].sort((a, b) => {
+        const cmp =
+          query.sortBy === 'priority'
+            ? priorityWeight(a.priority) - priorityWeight(b.priority)
+            : query.sortBy === 'status'
+              ? a.status.localeCompare(b.status)
+              : a.createdAt.getTime() - b.createdAt.getTime();
+
+        return cmp * direction;
+      });
 
       const total = data.length;
       const start = (query.page - 1) * query.pageSize;

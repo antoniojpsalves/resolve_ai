@@ -60,6 +60,19 @@ function buildWhere(query: ListOccurrencesQuery): Prisma.OccurrenceWhereInput {
 }
 
 /**
+ * `{ [query.sortBy]: query.sortOrder }` — sem `CASE WHEN` nem peso calculado
+ * em JS para `priority`: o Postgres ordena um valor de tipo `enum` nativo
+ * pela ordem de **declaração** do tipo, não alfabeticamente, e a ordem de
+ * `enum Priority` em `prisma/schema.prisma` (`BAIXA, MEDIA, ALTA, URGENTE`) já
+ * é a ordem certa de urgência crescente. `ORDER BY priority ASC` já devolve
+ * BAIXA→URGENTE de graça (provado em
+ * `tests/integration/occurrences-patch.test.ts`, não só assumido).
+ */
+function buildOrderBy(query: ListOccurrencesQuery): Prisma.OccurrenceOrderByWithRelationInput {
+  return { [query.sortBy]: query.sortOrder };
+}
+
+/**
  * Implementação Prisma da port `OccurrenceRepository`. Único lugar desta
  * tarefa (além de `mappers.ts` e `prisma-category-repository.ts`) onde
  * `@prisma/client` aparece.
@@ -136,7 +149,7 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const [rows, total] = await Promise.all([
       prisma.occurrence.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: buildOrderBy(query),
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
         // `categoryName` resolvido aqui: a tela de lista não busca mais o
