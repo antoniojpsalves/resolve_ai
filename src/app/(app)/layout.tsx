@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +28,21 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-svh flex-col">
       <header className="bg-background sticky top-0 z-10 border-b">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between gap-4 px-6">
-          <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
+          <div className="flex items-center gap-6">
+            <span className="text-lg font-semibold tracking-tight">{APP_NAME}</span>
+
+            <nav className="flex items-center gap-4 text-sm font-medium">
+              <Link href="/ocorrencias" className="hover:text-foreground/80">
+                Ocorrências
+              </Link>
+              {/* Só o gestor tem uma tela própria (RBAC de papel) — o solicitante nunca vê este link. */}
+              {user.role === 'GESTOR' ? (
+                <Link href="/dashboard" className="hover:text-foreground/80">
+                  Dashboard
+                </Link>
+              ) : null}
+            </nav>
+          </div>
 
           <div className="flex items-center gap-3">
             <span className="hidden text-sm font-medium sm:inline">{user.name}</span>
