@@ -160,6 +160,31 @@ export interface AddCommentData {
 }
 
 /**
+ * Dados para `changeStatus`. `toStatus` já veio validado por `canTransition`
+ * (o use-case `change-occurrence-status.ts` só chama o repositório quando
+ * `allowed: true`) — esta porta não repete a validação de transição, só
+ * persiste o resultado.
+ *
+ * Inclui `fromStatus`, além dos quatro campos do enunciado da tarefa: o
+ * use-case já carregou o `OccurrenceDetail` para checar `canTransition` e
+ * sabe o status atual — pedir para o repositório reler a linha dentro da
+ * transação só para descobrir o `fromStatus` seria uma consulta extra sem
+ * necessidade, e a implementação precisa desse valor para gravar
+ * `StatusHistory.fromStatus` (não existe "ler de volta do UPDATE": o Prisma
+ * não expõe o valor anterior da linha, só o que ficou depois de atualizar).
+ * Esta é a opção "receber `from` explícito" mencionada como preferida na
+ * tarefa — mantém a porta simétrica ao que o use-case já validou, em vez de
+ * reler dentro da transação.
+ */
+export interface ChangeStatusData {
+  fromStatus: OccurrenceStatus;
+  toStatus: OccurrenceStatus;
+  note?: string;
+  resolutionNote?: string;
+  changedById: string;
+}
+
+/**
  * Sinaliza que o `code` calculado por `nextSequenceForYear` + `buildOccurrenceCode`
  * colidiu com um `code` já existente — a corrida descrita em `create-occurrence.ts`.
  * Não é um `AppError`: nunca deve vazar para o cliente HTTP, é consumida
@@ -192,4 +217,11 @@ export interface OccurrenceRepository {
   addComment(input: AddCommentData): Promise<CommentEntry>;
   /** Maior sequência já usada no ano + 1 (ou 1, se nenhuma ocorrência do ano existir). */
   nextSequenceForYear(year: number): Promise<number>;
+  /**
+   * Atualiza `status` (e `resolutionNote`/`resolvedAt` quando o destino é
+   * `RESOLVIDA`) e insere a entrada de `StatusHistory` correspondente na
+   * mesma transação — mesma garantia de `create()`: não pode existir mudança
+   * de status sem a entrada de auditoria.
+   */
+  changeStatus(occurrenceId: string, input: ChangeStatusData): Promise<OccurrenceRecord>;
 }
