@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,39 @@ import { statusLabel } from '@/lib/occurrences/status';
 import { changeOccurrenceStatusSchema } from '@/modules/occurrence/application/change-occurrence-status';
 import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
 
-type TransitionFormValues = z.infer<typeof changeOccurrenceStatusSchema>;
+/**
+ * Só para o `zodResolver` deste formulário — não altera
+ * `changeOccurrenceStatusSchema` (contrato do servidor, usado pelos testes de
+ * integração). `defaultValues` sempre semeia `note` e `resolutionNote` com
+ * `''` (mantém o `<Textarea>` controlado independente de qual dos dois é o
+ * campo ativo para o destino atual), e os dois são
+ * `z.string().trim().min(1).optional()`: aceitam a chave ausente, rejeitam a
+ * chave presente e vazia. Sem este ajuste, nenhum destino consegue ser
+ * submetido sem texto — nem os que não exigem nota por regra de negócio
+ * (`EM_ANALISE`, `EM_ATENDIMENTO`) — porque os dois campos são validados
+ * juntos a cada submit (ver `docs/sdd/dia-03/fix-wave-brief.md`, Item 1). A
+ * obrigatoriedade de verdade para `CANCELADA`/`RESOLVIDA` continua sendo
+ * decidida pelo servidor (`domain/transitions.ts`, `missingRequiredField`) —
+ * é exatamente o que o comentário de `isNoteRequired` abaixo já previa.
+ *
+ * `z.union([literal(''), campo original]).transform(...)` em vez de
+ * `z.preprocess`: o `.transform` preserva o tipo de entrada real do campo
+ * (`string | undefined`) para o `zodResolver`/`useForm`; `z.preprocess`
+ * declara a entrada como `unknown` (limitação do próprio Zod), o que quebra a
+ * inferência de tipos entre `useForm<TransitionFormValues>` e o resolver. Só a
+ * string vazia exata vira `undefined` — texto só com espaços continua
+ * reprovado pelo `.trim().min(1)` original, como antes.
+ */
+const formSchema = changeOccurrenceStatusSchema.extend({
+  note: z
+    .union([z.literal(''), changeOccurrenceStatusSchema.shape.note])
+    .transform((value) => (value === '' ? undefined : value)),
+  resolutionNote: z
+    .union([z.literal(''), changeOccurrenceStatusSchema.shape.resolutionNote])
+    .transform((value) => (value === '' ? undefined : value)),
+});
+
+type TransitionFormValues = z.infer<typeof formSchema>;
 
 interface ProblemBody {
   title?: string;
@@ -115,7 +147,7 @@ function TransitionForm({ occurrenceId, target, onCancel, onSuccess }: Transitio
   const required = isNoteRequired(target);
 
   const form = useForm<TransitionFormValues>({
-    resolver: zodResolver(changeOccurrenceStatusSchema),
+    resolver: zodResolver(formSchema),
     defaultValues: { toStatus: target, note: '', resolutionNote: '' },
   });
 
