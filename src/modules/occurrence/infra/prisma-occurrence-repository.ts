@@ -13,14 +13,20 @@ import type {
   OccurrenceDetail,
   OccurrenceRecord,
   OccurrenceRepository,
+  RateOccurrenceData,
+  RatingEntry,
 } from '../application/ports/occurrence-repository';
-import { OccurrenceCodeConflictError } from '../application/ports/occurrence-repository';
+import {
+  OccurrenceAlreadyRatedError,
+  OccurrenceCodeConflictError,
+} from '../application/ports/occurrence-repository';
 import { fileStorage } from './file-storage';
 import {
   toCommentEntry,
   toOccurrenceDetail,
   toOccurrenceListItem,
   toOccurrenceRecord,
+  toRatingEntry,
 } from './mappers';
 
 /** Código do Prisma para violação de constraint única (mesmo usado em `prisma-user-repository.ts`). */
@@ -290,5 +296,30 @@ export const prismaOccurrenceRepository: OccurrenceRepository = {
     const imageUrl = row.imageKey ? await fileStorage.urlForKey(row.imageKey) : null;
 
     return toOccurrenceRecord(row, imageUrl);
+  },
+
+  async rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry> {
+    try {
+      const row = await prisma.rating.create({
+        data: { occurrenceId, score: input.score, comment: input.comment },
+      });
+
+      return toRatingEntry(row);
+    } catch (error) {
+      // Rede de segurança para a corrida real (ver `RateOccurrenceData` /
+      // `rate-occurrence.ts`): dois `POST` simultâneos podem passar os dois
+      // pela checagem "já avaliada" do use-case antes de qualquer um
+      // confirmar o `create` — o segundo `INSERT` esbarra na constraint
+      // `@unique` de `Rating.occurrenceId` (P2002). Mesmo padrão de
+      // `create()` acima para `OccurrenceCodeConflictError`.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === UNIQUE_VIOLATION
+      ) {
+        throw new OccurrenceAlreadyRatedError();
+      }
+
+      throw error;
+    }
   },
 };

@@ -218,6 +218,9 @@ describe('createOccurrence', () => {
       async assignResponsible() {
         throw new Error('não usado neste teste');
       },
+      async rate() {
+        throw new Error('não usado neste teste');
+      },
     };
 
     const result = await createOccurrence(validInput, actor, deps(occurrences));
