@@ -8,7 +8,11 @@ import {
 
 import type { FileStorage, StoredFile } from './ports/file-storage';
 
-/** Limite de tamanho de upload (item 2 do brief): 5 MB. */
+/**
+ * Limite de tamanho de upload: 5 MB — grande o bastante para uma foto de
+ * celular comum, pequeno o bastante para não segurar a requisição nem
+ * estourar espaço de storage.
+ */
 export const MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
 
 export interface UploadImageInput {

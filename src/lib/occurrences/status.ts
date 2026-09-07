@@ -20,10 +20,11 @@ const STATUS_LABELS: Record<OccurrenceStatus, string> = {
 
 /**
  * Classes Tailwind por status — azul / âmbar / índigo / verde / vermelho,
- * exatamente as cores do fluxograma do enunciado (item do brief da Tarefa 4).
- * O par `-100`/`-800` cobre o tema claro e `-500/15` + `-300` o escuro, os
- * dois com contraste de texto legível — a cor nunca é o único indicador de
- * status, o rótulo textual (`statusLabel`) sempre acompanha.
+ * seguindo a progressão natural do ciclo de vida (aberto → em análise → em
+ * atendimento → resolvido, com cancelado em vermelho por ser o desvio do
+ * fluxo). O par `-100`/`-800` cobre o tema claro e `-500/15` + `-300` o
+ * escuro, os dois com contraste de texto legível — a cor nunca é o único
+ * indicador de status, o rótulo textual (`statusLabel`) sempre acompanha.
  */
 const STATUS_BADGE_CLASSNAMES: Record<OccurrenceStatus, string> = {
   ABERTA: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',

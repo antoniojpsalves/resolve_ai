@@ -6,7 +6,8 @@ export interface ListCategoriesDeps {
 
 /**
  * Lista o catálogo de categorias ativas, ordenadas por nome — usado pelo
- * formulário de criação de ocorrência (Tarefa 4) e por `GET /api/v1/categories`.
+ * formulário de criação de ocorrência e pelo filtro de categoria da listagem,
+ * via `GET /api/v1/categories`.
  *
  * Qualquer usuário autenticado pode listar; não há escopo por papel aqui
  * (a checagem de sessão é responsabilidade da rota, via `requireSession`).

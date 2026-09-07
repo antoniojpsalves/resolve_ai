@@ -1,6 +1,5 @@
 # Reservado para a avaliação (nota + comentário do solicitante após a
-# ocorrência ser resolvida), prevista para o Dia 3 — regras próprias (só após
-# RESOLVIDA, uma vez por ocorrência) que ainda não existem no código. O
-# comentário de ocorrência (CommentEntry) não é feedback: mora em
-# src/modules/occurrence/, por ser parte do agregado Occurrence, sem ciclo de
-# vida próprio (ver README.md).
+# ocorrência ser resolvida) — regras próprias (só após RESOLVIDA, uma vez por
+# ocorrência) que ainda não existem no código. O comentário de ocorrência
+# (CommentEntry) não é feedback: mora em src/modules/occurrence/, por ser
+# parte do agregado Occurrence, sem ciclo de vida próprio (ver README.md).

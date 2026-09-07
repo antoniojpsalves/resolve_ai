@@ -17,10 +17,11 @@ const PRIORITY_LABELS: Record<Priority, string> = {
 };
 
 /**
- * Classes Tailwind por prioridade. O brief só fixa cor para status — aqui a
- * escala é livre, escolhida para não colidir visualmente com as cores de
- * status (ex.: `URGENTE` usa `rose`, não o mesmo `red` de `CANCELADA`), com o
- * mesmo cuidado de contraste claro/escuro.
+ * Classes Tailwind por prioridade — sem cor prescrita para prioridade em
+ * lugar nenhum, então a escala é livre, escolhida para não colidir
+ * visualmente com as cores de status (ex.: `URGENTE` usa `rose`, não o mesmo
+ * `red` de `CANCELADA`, senão os dois badges lado a lado pareceriam o mesmo
+ * alerta), com o mesmo cuidado de contraste claro/escuro.
  */
 const PRIORITY_BADGE_CLASSNAMES: Record<Priority, string> = {
   BAIXA: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300',

@@ -12,10 +12,11 @@ export function canCommentOccurrence(actor: Actor, occurrence: Occurrence): bool
 }
 
 // As três funções abaixo recebem `_occurrence` para manter a mesma assinatura
-// `(actor, occurrence)` das demais funções deste módulo (uniformidade para
-// quem consome — os use-cases do Dia 2/3), mesmo sem usar o parâmetro hoje.
-// O prefixo `_` sinaliza a não utilização intencional sem precisar de
-// `eslint-disable`.
+// `(actor, occurrence)` das demais funções deste módulo — quem consome uma
+// regra de permissão não deveria precisar saber quais delas usam a
+// ocorrência e quais só usam o ator, então todas têm a mesma forma, mesmo
+// sem usar o parâmetro hoje. O prefixo `_` sinaliza a não utilização
+// intencional sem precisar de `eslint-disable`.
 
 /** Só gestor muda a prioridade de uma ocorrência. */
 export function canChangePriority(actor: Actor, _occurrence: Occurrence): boolean {

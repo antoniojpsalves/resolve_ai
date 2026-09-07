@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
  * Renderizada quando `getOccurrence` lança `NotFoundError` — tanto para uma
  * ocorrência que não existe quanto para uma que existe mas não é do
  * solicitante logado. As duas situações caem na mesma tela de propósito
- * (mesma decisão do use-case): não dá pra distinguir "não existe" de "não é
- * sua" sem vazar informação para quem não deveria saber (item do brief).
+ * (mesma decisão do use-case, ver ADR 005): distinguir "não existe" de "não
+ * é sua" na resposta vazaria, para quem não deveria saber, que o registro
+ * existe.
  */
 export default function OcorrenciaNaoEncontrada() {
   return (
