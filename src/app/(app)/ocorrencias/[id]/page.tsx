@@ -11,10 +11,8 @@ import { formatDateTime } from '@/lib/occurrences/date';
 import { statusLabel } from '@/lib/occurrences/status';
 import { buildTimeline } from '@/lib/occurrences/timeline';
 import { getOccurrence } from '@/modules/occurrence/application/get-occurrence';
-import { listCategories } from '@/modules/occurrence/application/list-categories';
 import type { OccurrenceDetail } from '@/modules/occurrence/application/ports/occurrence-repository';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
-import { prismaCategoryRepository } from '@/modules/occurrence/infra/prisma-category-repository';
 import { prismaOccurrenceRepository } from '@/modules/occurrence/infra/prisma-occurrence-repository';
 
 import { CommentForm } from './comment-form';
@@ -64,12 +62,7 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
   const actor: Actor = { id: session.user.id, role: session.user.role };
   const { id } = await params;
 
-  const [detail, categories] = await Promise.all([
-    fetchDetail(id, actor),
-    listCategories({ categories: prismaCategoryRepository }),
-  ]);
-
-  const category = categories.find((item) => item.id === detail.categoryId);
+  const detail = await fetchDetail(id, actor);
   const timeline = buildTimeline(detail.history);
 
   return (
@@ -96,7 +89,7 @@ export default async function OcorrenciaDetalhePage({ params }: OcorrenciaDetalh
             <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
               Categoria
             </p>
-            <p className="text-sm">{category?.name ?? 'Categoria removida'}</p>
+            <p className="text-sm">{detail.categoryName}</p>
           </div>
 
           <div>

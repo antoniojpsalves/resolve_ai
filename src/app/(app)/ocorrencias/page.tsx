@@ -109,12 +109,15 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
   const parsedQuery = listOccurrencesQuerySchema.safeParse(filters);
   const query = parsedQuery.success ? parsedQuery.data : listOccurrencesQuerySchema.parse({});
 
+  // `listCategories` continua sendo buscado aqui, mas só para popular o
+  // `<Select>` de filtro (categorias ativas e selecionáveis) — o nome exibido
+  // em cada item da lista vem de `occurrence.categoryName`, resolvido por
+  // join no repositório, não deste catálogo.
   const [result, categories] = await Promise.all([
     listOccurrences(query, actor, { occurrences: prismaOccurrenceRepository }),
     listCategories({ categories: prismaCategoryRepository }),
   ]);
 
-  const categoryNameById = new Map(categories.map((category) => [category.id, category.name]));
   const filtersActive = hasActiveFilters(filters);
   const isEmpty = result.data.length === 0;
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
@@ -161,8 +164,7 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
                       <p className="text-muted-foreground font-mono text-xs">{occurrence.code}</p>
                       <p className="truncate font-medium">{occurrence.title}</p>
                       <p className="text-muted-foreground text-xs">
-                        {categoryNameById.get(occurrence.categoryId) ?? 'Categoria'} ·{' '}
-                        {formatDate(occurrence.createdAt)}
+                        {occurrence.categoryName} · {formatDate(occurrence.createdAt)}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap gap-2">

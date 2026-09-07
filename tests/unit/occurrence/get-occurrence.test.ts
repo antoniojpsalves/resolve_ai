@@ -20,6 +20,7 @@ function buildRecord(overrides: Partial<OccurrenceRecord> = {}): OccurrenceRecor
     status: 'ABERTA',
     priority: 'MEDIA',
     categoryId: 'cat-hidraulica',
+    categoryName: 'Hidráulica',
     locationLabel: 'Bloco B, garagem -1',
     latitude: null,
     longitude: null,

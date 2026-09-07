@@ -26,14 +26,20 @@ import type {
 
 /**
  * `assignedTo` é opcional na entrada: `create()` (`prisma-occurrence-repository.ts`)
- * passa a linha crua do `INSERT`, sem relação nenhuma incluída — mas nesse
+ * passa a linha crua do `INSERT` sem essa relação incluída — mas nesse
  * caso `assignedToId` é sempre `null` (nenhuma ocorrência nasce já atribuída),
  * então `assignedToName` cai em `null` também, sem precisar de join. Quem
  * inclui a relação de verdade é `findById` (via `toOccurrenceDetail`), para
  * ocorrências que já têm um responsável.
+ *
+ * `category`, ao contrário, é obrigatório aqui: diferente de `assignedToId`,
+ * `categoryId` nunca é `null`, então todo chamador (`create`, `list`,
+ * `findById`) já inclui `category: { select: { name: true } }` na consulta —
+ * não existe caminho que precise de `categoryName` sem o join.
  */
 type OccurrenceRowWithAssignee = PrismaOccurrence & {
   assignedTo?: { name: string } | null;
+  category: { name: string };
 };
 
 /**
@@ -59,6 +65,7 @@ export function toOccurrenceRecord(
     status: row.status as OccurrenceStatus,
     priority: row.priority as Priority,
     categoryId: row.categoryId,
+    categoryName: row.category.name,
     locationLabel: row.locationLabel,
     latitude: row.latitude,
     longitude: row.longitude,
@@ -74,7 +81,10 @@ export function toOccurrenceRecord(
   };
 }
 
-export function toOccurrenceListItem(row: PrismaOccurrence): OccurrenceListItem {
+/** `list()` sempre inclui `category: { select: { name: true } }` — mesma justificativa de `OccurrenceRowWithAssignee`. */
+type OccurrenceRowWithCategory = PrismaOccurrence & { category: { name: string } };
+
+export function toOccurrenceListItem(row: OccurrenceRowWithCategory): OccurrenceListItem {
   return {
     id: row.id,
     code: row.code,
@@ -82,6 +92,7 @@ export function toOccurrenceListItem(row: PrismaOccurrence): OccurrenceListItem 
     status: row.status as OccurrenceStatus,
     priority: row.priority as Priority,
     categoryId: row.categoryId,
+    categoryName: row.category.name,
     locationLabel: row.locationLabel,
     createdById: row.createdById,
     assignedToId: row.assignedToId,
@@ -127,8 +138,7 @@ export function toRatingEntry(row: PrismaRating): RatingEntry {
   };
 }
 
-type OccurrenceWithRelations = PrismaOccurrence & {
-  assignedTo?: { name: string } | null;
+type OccurrenceWithRelations = OccurrenceRowWithAssignee & {
   history: StatusHistoryRowWithUser[];
   comments: CommentRowWithAuthor[];
   rating: PrismaRating | null;
