@@ -26,6 +26,18 @@ function fakeName(id: string): string {
   return `Nome de teste (${id})`;
 }
 
+/**
+ * Mesmo placeholder de `fakeName`, para `categoryName`: a camada de
+ * aplicação só carrega `categoryId` (via `CategoryRepository`, que nem
+ * devolve nome — só `id`/`active`), quem resolve o nome de verdade é a
+ * implementação Prisma via `include: { category: { select: { name: true } } }`
+ * (coberta por `mappers.test.ts`). Nenhum teste deste arquivo depende do
+ * conteúdo exato desta string.
+ */
+function fakeCategoryName(categoryId: string): string {
+  return `Categoria de teste (${categoryId})`;
+}
+
 export type FakeOccurrenceSeed = OccurrenceRecord & {
   history?: StatusHistoryEntry[];
   comments?: CommentEntry[];
@@ -89,6 +101,7 @@ export function createInMemoryOccurrenceRepository(
         status: 'ABERTA',
         priority: 'MEDIA',
         categoryId: input.categoryId,
+        categoryName: fakeCategoryName(input.categoryId),
         locationLabel: input.locationLabel,
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
@@ -153,6 +166,7 @@ export function createInMemoryOccurrenceRepository(
         status: o.status,
         priority: o.priority,
         categoryId: o.categoryId,
+        categoryName: o.categoryName,
         locationLabel: o.locationLabel,
         createdById: o.createdById,
         assignedToId: o.assignedToId,

@@ -181,6 +181,7 @@ describe('createOccurrence', () => {
           status: 'ABERTA',
           priority: 'MEDIA',
           categoryId: input.categoryId,
+          categoryName: 'Hidráulica',
           locationLabel: input.locationLabel,
           latitude: input.latitude ?? null,
           longitude: input.longitude ?? null,

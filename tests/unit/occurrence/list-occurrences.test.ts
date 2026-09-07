@@ -22,6 +22,7 @@ function buildRecord(overrides: Partial<OccurrenceRecord> = {}): OccurrenceRecor
     status: 'ABERTA',
     priority: 'MEDIA',
     categoryId: 'cat-1',
+    categoryName: 'Categoria 1',
     locationLabel: 'Bloco A',
     latitude: null,
     longitude: null,

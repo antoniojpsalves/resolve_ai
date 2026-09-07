@@ -43,20 +43,32 @@ const baseOccurrenceRow: PrismaOccurrence = {
   updatedAt: new Date('2026-08-01T10:00:00.000Z'),
 };
 
+/**
+ * `category` entra à parte de `baseOccurrenceRow` (que é só `PrismaOccurrence`,
+ * sem relação nenhuma) porque `toOccurrenceRecord`/`toOccurrenceListItem`
+ * agora exigem a relação incluída — todo chamador real
+ * (`prisma-occurrence-repository.ts`) já faz `include: { category: { select: { name: true } } }`
+ * em `create`, `list` e `findById` (ver I2: nome de categoria vem de join,
+ * nunca de busca separada do catálogo).
+ */
+const baseCategory = { name: 'Hidráulica' };
+const baseOccurrenceRowWithCategory = { ...baseOccurrenceRow, category: baseCategory };
+
 describe('toOccurrenceRecord', () => {
   it('traduz a linha do Prisma para OccurrenceRecord, assignedToName null sem relação incluída', () => {
     // `create()` (prisma-occurrence-repository.ts) chama esta função sem
     // incluir a relação `assignedTo` — não precisa, `assignedToId` é sempre
     // null na criação. `assignedToName` cai em null sem exigir join.
-    expect(toOccurrenceRecord(baseOccurrenceRow, null)).toEqual({
+    expect(toOccurrenceRecord(baseOccurrenceRowWithCategory, null)).toEqual({
       ...baseOccurrenceRow,
+      categoryName: baseCategory.name,
       assignedToName: null,
     });
   });
 
   it('resolve assignedToName a partir da relação assignedTo, quando incluída', () => {
     const row = {
-      ...baseOccurrenceRow,
+      ...baseOccurrenceRowWithCategory,
       assignedToId: 'user-gestor',
       assignedTo: { name: 'Gestor de Teste' },
     };
@@ -64,8 +76,18 @@ describe('toOccurrenceRecord', () => {
     expect(toOccurrenceRecord(row, null).assignedToName).toBe('Gestor de Teste');
   });
 
+  it('resolve categoryName a partir da relação category', () => {
+    const row = { ...baseOccurrenceRowWithCategory, category: { name: 'Elétrica' } };
+
+    expect(toOccurrenceRecord(row, null).categoryName).toBe('Elétrica');
+  });
+
   it('usa o imageUrl recebido por parâmetro, nunca row.imageUrl — a coluna não é mais lida', () => {
-    const row = { ...baseOccurrenceRow, imageKey: 'abc123.png', imageUrl: 'valor-da-coluna' };
+    const row = {
+      ...baseOccurrenceRowWithCategory,
+      imageKey: 'abc123.png',
+      imageUrl: 'valor-da-coluna',
+    };
 
     // Mesmo com `row.imageUrl` preenchido, o resultado reflete só o segundo
     // argumento — quem resolve a URL de leitura é quem chama esta função
@@ -77,14 +99,15 @@ describe('toOccurrenceRecord', () => {
 });
 
 describe('toOccurrenceListItem', () => {
-  it('projeta só os campos usados na listagem', () => {
-    expect(toOccurrenceListItem(baseOccurrenceRow)).toEqual({
+  it('projeta só os campos usados na listagem, com categoryName resolvido via join', () => {
+    expect(toOccurrenceListItem(baseOccurrenceRowWithCategory)).toEqual({
       id: 'occ-1',
       code: 'OC-2026-000001',
       title: 'Vazamento na garagem',
       status: 'ABERTA',
       priority: 'MEDIA',
       categoryId: 'cat-hidraulica',
+      categoryName: 'Hidráulica',
       locationLabel: 'Bloco B, garagem -1',
       createdById: 'user-ana',
       assignedToId: null,
@@ -212,7 +235,7 @@ describe('toOccurrenceDetail', () => {
 
     const detail = toOccurrenceDetail(
       {
-        ...baseOccurrenceRow,
+        ...baseOccurrenceRowWithCategory,
         assignedToId: 'user-gestor',
         assignedTo: { name: 'Gestor de Teste' },
         history: [historyRow],
@@ -224,6 +247,7 @@ describe('toOccurrenceDetail', () => {
 
     expect(detail).toEqual({
       ...baseOccurrenceRow,
+      categoryName: baseCategory.name,
       assignedToId: 'user-gestor',
       assignedToName: 'Gestor de Teste',
       history: [
@@ -254,7 +278,7 @@ describe('toOccurrenceDetail', () => {
   it('devolve rating null quando a ocorrência não foi avaliada', () => {
     const detail = toOccurrenceDetail(
       {
-        ...baseOccurrenceRow,
+        ...baseOccurrenceRowWithCategory,
         history: [],
         comments: [],
         rating: null,
