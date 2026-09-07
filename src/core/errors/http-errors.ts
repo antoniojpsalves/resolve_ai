@@ -42,6 +42,13 @@ export class ConflictError extends AppError {
   }
 }
 
+/** 413 — corpo da requisição maior que o limite aceito (ex.: upload acima de 5 MB). */
+export class PayloadTooLargeError extends AppError {
+  constructor(title = 'Arquivo muito grande', options: AppErrorOptions = {}) {
+    super('PAYLOAD_TOO_LARGE', title, 413, options);
+  }
+}
+
 /** 503 — dependência externa (ex.: banco de dados) indisponível ou não pronta. */
 export class ServiceUnavailableError extends AppError {
   constructor(title = 'Serviço indisponível', options: AppErrorOptions = {}) {

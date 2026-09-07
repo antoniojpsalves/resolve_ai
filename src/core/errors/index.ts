@@ -4,6 +4,7 @@ export {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  PayloadTooLargeError,
   ServiceUnavailableError,
   UnauthorizedError,
   ValidationError,

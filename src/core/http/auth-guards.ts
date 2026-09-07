@@ -25,20 +25,35 @@ export async function requireSession(): Promise<Session> {
 }
 
 /**
+ * Retorna a sessão atual se o papel do usuário estiver entre os exigidos.
+ * Sem sessão → `UnauthorizedError` (401); papel fora da lista →
+ * `ForbiddenError` (403).
+ *
+ * Cobre as ações da matriz de permissões liberadas para mais de um papel —
+ * `requireRole` é o caso particular de uma lista com um item só.
+ */
+export async function requireAnyRole(roles: Role[]): Promise<Session> {
+  const session = await requireSession();
+
+  if (!roles.includes(session.user.role)) {
+    const detail =
+      roles.length === 1
+        ? `Este recurso exige o papel ${roles[0]}.`
+        : `Este recurso exige um dos papéis: ${roles.join(', ')}.`;
+
+    throw new ForbiddenError('Acesso restrito', { detail });
+  }
+
+  return session;
+}
+
+/**
  * Retorna a sessão atual se o usuário tiver o papel exigido.
  * Sem sessão → `UnauthorizedError` (401); sessão com papel errado →
  * `ForbiddenError` (403).
  */
 export async function requireRole(role: Role): Promise<Session> {
-  const session = await requireSession();
-
-  if (session.user.role !== role) {
-    throw new ForbiddenError('Acesso restrito', {
-      detail: `Este recurso exige o papel ${role}.`,
-    });
-  }
-
-  return session;
+  return requireAnyRole([role]);
 }
 
 /**
