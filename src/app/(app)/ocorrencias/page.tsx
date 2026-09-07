@@ -14,6 +14,8 @@ import {
   parseOccurrenceFilters,
   readOccurrenceFilters,
 } from '@/lib/occurrences/query';
+import { listManagers } from '@/modules/identity/application/list-managers';
+import { prismaUserRepository } from '@/modules/identity/infra/prisma-user-repository';
 import { listCategories } from '@/modules/occurrence/application/list-categories';
 import { listOccurrences } from '@/modules/occurrence/application/list-occurrences';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
@@ -116,9 +118,14 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
   // `<Select>` de filtro (categorias ativas e selecionáveis) — o nome exibido
   // em cada item da lista vem de `occurrence.categoryName`, resolvido por
   // join no repositório, não deste catálogo.
-  const [result, categories] = await Promise.all([
+  // `listManagers` só é buscado para o gestor (o filtro de responsável só
+  // aparece para esse papel) — em paralelo com as outras duas consultas.
+  const [result, categories, managers] = await Promise.all([
     listOccurrences(query, actor, { occurrences: prismaOccurrenceRepository }),
     listCategories({ categories: prismaCategoryRepository }),
+    actor.role === 'GESTOR'
+      ? listManagers({ users: prismaUserRepository })
+      : Promise.resolve(undefined),
   ]);
 
   const filtersActive = hasActiveFilters(applied);
@@ -127,7 +134,7 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
 
   return (
     <>
-      <OccurrenceFilters filters={applied} categories={categories} />
+      <OccurrenceFilters filters={applied} categories={categories} managers={managers} />
 
       {isEmpty ? (
         <Card>
