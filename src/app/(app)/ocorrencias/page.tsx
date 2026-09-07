@@ -11,13 +11,11 @@ import { formatDate } from '@/lib/occurrences/date';
 import {
   buildOccurrencesHref,
   hasActiveFilters,
+  parseOccurrenceFilters,
   readOccurrenceFilters,
 } from '@/lib/occurrences/query';
 import { listCategories } from '@/modules/occurrence/application/list-categories';
-import {
-  listOccurrences,
-  listOccurrencesQuerySchema,
-} from '@/modules/occurrence/application/list-occurrences';
+import { listOccurrences } from '@/modules/occurrence/application/list-occurrences';
 import type { Actor } from '@/modules/occurrence/domain/occurrence';
 import { prismaCategoryRepository } from '@/modules/occurrence/infra/prisma-category-repository';
 import { prismaOccurrenceRepository } from '@/modules/occurrence/infra/prisma-occurrence-repository';
@@ -103,11 +101,13 @@ interface OcorrenciasListContentProps {
  * `<Suspense>` do componente pai sem bloquear o cabeçalho.
  */
 async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContentProps) {
-  // Reusa o schema do use-case para validar a query string — uma URL com
-  // filtro inválido (editada à mão) cai de volta para a primeira página sem
-  // filtro em vez de estourar um 500.
-  const parsedQuery = listOccurrencesQuerySchema.safeParse(filters);
-  const query = parsedQuery.success ? parsedQuery.data : listOccurrencesQuerySchema.parse({});
+  // Valida a query string campo a campo (mesmo schema do use-case) — um
+  // valor inválido (ex.: `pageSize=9999`, editado à mão na URL) descarta só
+  // aquele campo, preservando os demais filtros em vez de cair para a
+  // listagem sem filtro nenhum. `applied` é o que efetivamente está em
+  // vigor — é isso que a UI (Select, "Limpar filtros", paginação) reflete,
+  // nunca `filters` cru.
+  const { query, applied } = parseOccurrenceFilters(filters);
 
   // `listCategories` continua sendo buscado aqui, mas só para popular o
   // `<Select>` de filtro (categorias ativas e selecionáveis) — o nome exibido
@@ -118,13 +118,13 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
     listCategories({ categories: prismaCategoryRepository }),
   ]);
 
-  const filtersActive = hasActiveFilters(filters);
+  const filtersActive = hasActiveFilters(applied);
   const isEmpty = result.data.length === 0;
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   return (
     <>
-      <OccurrenceFilters filters={filters} categories={categories} />
+      <OccurrenceFilters filters={applied} categories={categories} />
 
       {isEmpty ? (
         <Card>
@@ -180,7 +180,7 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
           <nav className="flex items-center justify-between" aria-label="Paginação">
             {query.page > 1 ? (
               <Button variant="outline" size="sm" asChild>
-                <Link href={buildOccurrencesHref(filters, { page: query.page - 1 })}>Anterior</Link>
+                <Link href={buildOccurrencesHref(applied, { page: query.page - 1 })}>Anterior</Link>
               </Button>
             ) : (
               <Button variant="outline" size="sm" disabled>
@@ -194,7 +194,7 @@ async function OcorrenciasListContent({ actor, filters }: OcorrenciasListContent
 
             {query.page < totalPages ? (
               <Button variant="outline" size="sm" asChild>
-                <Link href={buildOccurrencesHref(filters, { page: query.page + 1 })}>Próxima</Link>
+                <Link href={buildOccurrencesHref(applied, { page: query.page + 1 })}>Próxima</Link>
               </Button>
             ) : (
               <Button variant="outline" size="sm" disabled>

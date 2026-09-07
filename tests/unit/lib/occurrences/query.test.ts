@@ -4,6 +4,7 @@ import {
   buildOccurrencesHref,
   firstValue,
   hasActiveFilters,
+  parseOccurrenceFilters,
   readOccurrenceFilters,
 } from '@/lib/occurrences/query';
 
@@ -52,6 +53,66 @@ describe('hasActiveFilters', () => {
     expect(hasActiveFilters({ status: 'ABERTA' })).toBe(true);
     expect(hasActiveFilters({ categoryId: 'cat-1' })).toBe(true);
     expect(hasActiveFilters({ q: 'vazamento' })).toBe(true);
+  });
+});
+
+describe('parseOccurrenceFilters', () => {
+  // Reproduz ao vivo em `/ocorrencias?status=RESOLVIDA&pageSize=9999`: o
+  // `safeParse` do objeto inteiro falhava por causa só do `pageSize` (acima
+  // do máximo de 100) e derrubava também o `status`, válido. `applied` é o
+  // que a UI usa para refletir o filtro que está de fato em vigor.
+  it('um campo inválido descarta só aquele campo, preservando os demais', () => {
+    const { query, applied } = parseOccurrenceFilters({
+      status: 'RESOLVIDA',
+      pageSize: '9999',
+    });
+
+    expect(query.status).toBe('RESOLVIDA');
+    expect(query.pageSize).toBe(20); // volta ao default, não ao valor inválido
+    expect(applied).toEqual({ status: 'RESOLVIDA' });
+  });
+
+  it('todos os campos válidos ficam aplicados', () => {
+    const { query, applied } = parseOccurrenceFilters({
+      status: 'RESOLVIDA',
+      categoryId: 'cat-1',
+      q: 'vazamento',
+      page: '2',
+      pageSize: '10',
+    });
+
+    expect(query).toMatchObject({
+      status: 'RESOLVIDA',
+      categoryId: 'cat-1',
+      q: 'vazamento',
+      page: 2,
+      pageSize: 10,
+    });
+    expect(applied).toEqual({
+      status: 'RESOLVIDA',
+      categoryId: 'cat-1',
+      q: 'vazamento',
+      page: '2',
+      pageSize: '10',
+    });
+  });
+
+  it('campo desconhecido é ignorado, sem afetar os demais', () => {
+    const { query, applied } = parseOccurrenceFilters({
+      status: 'ABERTA',
+      campoInventado: 'x',
+    });
+
+    expect(query.status).toBe('ABERTA');
+    expect(applied).toEqual({ status: 'ABERTA' });
+  });
+
+  it('nenhum filtro válido devolve a listagem sem filtro (defaults do schema)', () => {
+    const { query, applied } = parseOccurrenceFilters({ status: 'BANANA', pageSize: '-1' });
+
+    expect(query).toMatchObject({ page: 1, pageSize: 20 });
+    expect(query.status).toBeUndefined();
+    expect(applied).toEqual({});
   });
 });
 
