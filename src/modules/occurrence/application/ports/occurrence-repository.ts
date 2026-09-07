@@ -125,6 +125,15 @@ export interface RatingEntry {
   createdAt: Date;
 }
 
+/**
+ * Dados para `rate()`. `score`/`comment` já vêm validados pelo `rateOccurrenceSchema`
+ * (use-case) — esta porta não repete a validação de faixa/tamanho, só persiste.
+ */
+export interface RateOccurrenceData {
+  score: number;
+  comment?: string;
+}
+
 /** Detalhe completo: `OccurrenceRecord` mais histórico, comentários e avaliação. */
 export interface OccurrenceDetail extends OccurrenceRecord {
   history: StatusHistoryEntry[];
@@ -202,6 +211,22 @@ export class OccurrenceCodeConflictError extends Error {
 }
 
 /**
+ * Sinaliza que já existe uma `Rating` para a ocorrência — `Rating.occurrenceId`
+ * é `@unique` (`schema.prisma`). Não é um `AppError`: nunca deve vazar para o
+ * cliente HTTP, é consumida internamente pelo use-case `rateOccurrence`, que já
+ * checa `OccurrenceDetail.rating !== null` antes de chamar `rate()` — este erro
+ * só deveria aparecer numa corrida real (dois `POST` simultâneos passando os
+ * dois pela checagem antes de qualquer um confirmar o `create`), é a defesa de
+ * segunda camada, não a primeira. Mesmo padrão de `OccurrenceCodeConflictError`.
+ */
+export class OccurrenceAlreadyRatedError extends Error {
+  constructor() {
+    super('Esta ocorrência já foi avaliada.');
+    this.name = 'OccurrenceAlreadyRatedError';
+  }
+}
+
+/**
  * Port de persistência de ocorrências. Os use-cases dependem desta
  * interface, nunca do Prisma — a implementação real vive em
  * `infra/prisma-occurrence-repository.ts`; os testes usam fakes em memória
@@ -231,9 +256,19 @@ export interface OccurrenceRepository {
   /**
    * Atualiza só `assignedToId` — `null` desatribui. Não toca em
    * `status`/`priority`/histórico: atribuir responsável não é uma transição
-   * de status e não gera entrada em `StatusHistory` (o plano não pede isso;
-   * se quiser registrar "quem atribuiu quem" mais tarde, é decisão de um dia
-   * futuro, não deste escopo).
+   * de status e não gera entrada em `StatusHistory` (não é um requisito hoje;
+   * se quiser registrar "quem atribuiu quem" mais tarde, é uma decisão
+   * futura).
    */
   assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord>;
+  /**
+   * Cria a avaliação de uma ocorrência. `Rating.occurrenceId` é `@unique`
+   * (`schema.prisma`) — chamar isto duas vezes para a mesma ocorrência lança
+   * (a implementação Prisma traduz o P2002 para `OccurrenceAlreadyRatedError`,
+   * mesmo padrão de `OccurrenceCodeConflictError`). O use-case checa
+   * "já avaliada" antes de chamar isto (via `OccurrenceDetail.rating`), então
+   * este erro só deveria aparecer numa corrida real — é a defesa de segunda
+   * camada, não a primeira.
+   */
+  rate(occurrenceId: string, input: RateOccurrenceData): Promise<RatingEntry>;
 }
