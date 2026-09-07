@@ -15,6 +15,19 @@ export default defineConfig({
     // que não tocam Prisma; no CI, `DATABASE_URL_TEST` não é definida, então
     // o setup não faz nada lá.
     setupFiles: ['tests/integration/setup.ts'],
+    // `fileParallelism: false`: com mais de um arquivo de teste de
+    // integração (a partir desta tarefa — `occurrences-status.test.ts` e
+    // `occurrences-patch.test.ts`), o Vitest roda arquivos em paralelo por
+    // padrão e cada um chama `resetDatabase()` (`TRUNCATE ... CASCADE`)
+    // contra o mesmo Postgres de teste no `beforeEach` — dois `TRUNCATE`
+    // concorrentes (ou um `TRUNCATE` durante o `$transaction` de outro
+    // arquivo) produzem deadlock (`40P01`) ou uma FK violation genuína (a
+    // categoria de um arquivo sendo apagada no meio do teste do outro).
+    // Testes unitários não tocam banco, então serializar todo o arquivo não
+    // muda o resultado deles — só remove a corrida real entre arquivos de
+    // integração, ao custo de perder paralelismo entre arquivos (não dentro
+    // de um arquivo).
+    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
