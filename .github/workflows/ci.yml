@@ -5,8 +5,8 @@ on:
     branches: [main]
   pull_request:
 
-# Os jobs `e2e` (Playwright) e `docker` (build da imagem + smoke test em
-# /api/v1/health) entram numa etapa posterior.
+# O job `docker` (build da imagem + smoke test em /api/v1/health) entra na
+# etapa posterior.
 jobs:
   quality:
     name: Lint, tipos e formatação
@@ -85,4 +85,61 @@ jobs:
         with:
           name: coverage
           path: coverage/
+          if-no-files-found: warn
+
+  e2e:
+    name: Testes e2e (Playwright)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resolve
+          POSTGRES_PASSWORD: resolve
+          POSTGRES_DB: resolve_ai_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resolve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_e2e?schema=public
+      AUTH_SECRET: ci-e2e-secret-nao-usar-em-producao
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Aplicar migrations
+        run: npx prisma migrate deploy
+
+      - name: Popular banco (seed)
+        run: npm run db:seed
+
+      - name: Build de produção
+        run: npm run build
+
+      - name: Instalar navegadores do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Rodar jornadas e2e
+        run: npm run test:e2e
+
+      - name: Publicar relatório do Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
           if-no-files-found: warn
