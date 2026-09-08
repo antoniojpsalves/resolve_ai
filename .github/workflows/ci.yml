@@ -180,9 +180,16 @@ jobs:
 
       - name: Subir o container
         run: |
+          # AUTH_TRUST_HOST=true: fora de uma plataforma com detecção automática de
+          # host confiável (Vercel, etc.), Auth.js v5 recusa qualquer rota de auth
+          # com 500 UntrustedHost sem isso — confirmado ao vivo com exatamente estas
+          # env vars.
+          # AUTH_URL não é necessário: com AUTH_TRUST_HOST=true, o login funciona de
+          # ponta a ponta (CSRF, callback de credenciais e sessão) mesmo sem AUTH_URL.
           docker run -d --name resolve_ai_ci --network host \
             -e DATABASE_URL=postgresql://resolve:resolve@localhost:5432/resolve_ai_docker?schema=public \
             -e AUTH_SECRET=ci-docker-secret-nao-usar-em-producao \
+            -e AUTH_TRUST_HOST=true \
             resolve_ai:ci
 
       - name: Aguardar o container ficar saudável
@@ -204,6 +211,32 @@ jobs:
         run: |
           status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/)
           test "$status" = "200" || (echo "esperado 200, recebido $status" && exit 1)
+
+      - name: Smoke test — login (sem 500 UntrustedHost)
+        run: |
+          # Este job não semeia o Postgres (só roda migrations — ver step acima),
+          # então não há usuário real para logar. O objetivo aqui não é validar a
+          # jornada de login completa (isso já é coberto pelo job `e2e`, com banco
+          # semeado), e sim travar uma regressão específica já observada: sem
+          # AUTH_TRUST_HOST, toda rota de auth responde 500
+          # (UntrustedHost) antes mesmo de checar credenciais. Com o host confiável
+          # configurado, o fluxo CSRF -> callback de credenciais funciona
+          # normalmente e credenciais inexistentes resultam em 302 (redirect para
+          # /login?error=CredentialsSignin), nunca 500.
+          jar=$(mktemp)
+          csrf=$(curl -sf -c "$jar" http://localhost:3000/api/v1/auth/csrf | grep -o '"csrfToken":"[^"]*"' | cut -d'"' -f4)
+          if [ -z "$csrf" ]; then
+            echo "csrfToken vazio — resposta de /api/v1/auth/csrf:"
+            curl -s http://localhost:3000/api/v1/auth/csrf
+            exit 1
+          fi
+          status=$(curl -s -o /dev/null -w '%{http_code}' -b "$jar" -c "$jar" \
+            -X POST http://localhost:3000/api/v1/auth/callback/credentials \
+            --data-urlencode "csrfToken=$csrf" \
+            --data-urlencode "email=smoke-test-sem-usuario@resolveai.com" \
+            --data-urlencode "password=SenhaQualquer123" \
+            --data-urlencode "json=true")
+          test "$status" = "302" || (echo "esperado 302 (CredentialsSignin), recebido $status" && exit 1)
 
       - name: Logs do container (sempre, para depuração)
         if: always()
