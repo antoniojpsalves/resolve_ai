@@ -5,8 +5,6 @@ on:
     branches: [main]
   pull_request:
 
-# O job `docker` (build da imagem + smoke test em /api/v1/health) entra na
-# Tarefa 4 do Dia 4.
 jobs:
   quality:
     name: Lint, tipos e formatação
@@ -143,3 +141,74 @@ jobs:
           name: playwright-report
           path: playwright-report/
           if-no-files-found: warn
+
+  docker:
+    name: Build da imagem + smoke test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: resolve
+          POSTGRES_PASSWORD: resolve
+          POSTGRES_DB: resolve_ai_docker
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resolve"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências (para aplicar migrations do host)
+        run: npm ci
+
+      - name: Aplicar migrations no Postgres do job
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_docker?schema=public
+
+      - name: Build da imagem
+        run: docker build -t resolve_ai:ci .
+
+      - name: Subir o container
+        run: |
+          docker run -d --name resolve_ai_ci --network host \
+            -e DATABASE_URL=postgresql://resolve:resolve@localhost:5432/resolve_ai_docker?schema=public \
+            -e AUTH_SECRET=ci-docker-secret-nao-usar-em-producao \
+            resolve_ai:ci
+
+      - name: Aguardar o container ficar saudável
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' resolve_ai_ci 2>/dev/null || echo "starting")
+            if [ "$status" = "healthy" ]; then exit 0; fi
+            sleep 2
+          done
+          echo "Container não ficou saudável a tempo"
+          docker logs resolve_ai_ci
+          exit 1
+
+      - name: Smoke test — /api/v1/health
+        run: |
+          curl -sf http://localhost:3000/api/v1/health | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: Smoke test — página inicial responde
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/)
+          test "$status" = "200" || (echo "esperado 200, recebido $status" && exit 1)
+
+      - name: Logs do container (sempre, para depuração)
+        if: always()
+        run: docker logs resolve_ai_ci
+
+      - name: Parar o container
+        if: always()
+        run: docker stop resolve_ai_ci || true
