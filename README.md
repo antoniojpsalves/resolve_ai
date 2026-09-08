@@ -127,6 +127,16 @@ determinística de teste). `resetDatabase()` recusa rodar se `DATABASE_URL`
 não apontar para um banco cujo nome contenha `_test`, como proteção contra
 truncar o banco de dev por engano.
 
+## Testes e2e (Playwright)
+
+`npm run test:e2e` depende de um build de produção **já existente**:
+`webServer.command` (`playwright.config.ts`) só roda `npm run start`, nunca
+`npm run build`. Quem clonar o repositório e rodar `npm run test:e2e` sem
+antes buildar recebe o servidor de produção subindo contra um `.next/`
+inexistente ou desatualizado — rode `npm run build` uma vez (ou de novo após
+mudar código) antes de `npm run test:e2e`. No CI, isso não é um problema: o
+job `e2e` do workflow já builda explicitamente antes de rodar os testes.
+
 ## Scripts disponíveis
 
 | Script                    | Descrição                                                                    |

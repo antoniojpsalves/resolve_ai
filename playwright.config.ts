@@ -23,6 +23,15 @@ export default defineConfig({
   // é *dentro* de `journeys.spec.ts`, garantido por `test.describe.serial`
   // (mesmo worker, ordem declarada, para no primeiro teste que falhar) — não
   // por `workers: 1` global, que penalizaria toda a suíte à toa.
+  //
+  // Atenção, autor de um futuro arquivo e2e: `fullyParallel: true` roda
+  // arquivos diferentes em paralelo, contra o mesmo Postgres não resetado
+  // entre eles (ver `webServer`/`DEFAULT_E2E_DATABASE_URL` abaixo). Um novo
+  // spec que toque dados de negócio (crie/edite ocorrências, usuários etc.)
+  // vai competir por esses mesmos dados com `journeys.spec.ts` a menos que
+  // também seja serializado internamente (`test.describe.serial`, como aqui)
+  // ou auto-isolado (fixtures próprias, dados com identificador único por
+  // execução) — sem isso, a mesma classe de corrida de dados volta.
   fullyParallel: true,
   reporter: [['html', { outputFolder: 'playwright-report' }]],
   // Jornada 2 encadeia upload de imagem, criação de ocorrência e várias
