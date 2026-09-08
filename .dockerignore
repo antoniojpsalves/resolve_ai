@@ -1,0 +1,18 @@
+node_modules
+.next
+.git
+coverage
+playwright-report
+test-results
+.storage
+*.log
+.env*
+!.env.example
+
+# demais artefatos que não pertencem ao contexto de build da imagem
+.github
+.vscode
+docs
+tests
+*.md
+!README.md
