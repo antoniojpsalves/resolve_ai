@@ -1,0 +1,1562 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Resolve Aí — API",
+    "version": "1.0.0",
+    "description": "Plataforma de gestão de ocorrências. Contrato gerado a partir dos schemas Zod já existentes em `application/` (não escrito à mão) — ver `src/core/openapi/`. Erros seguem RFC 7807 (`application/problem+json`). Projeto privado (`\"private\": true` em `package.json`) — sem licença de reuso público a declarar aqui."
+  },
+  "servers": [
+    {
+      "description": "Servidor atual (relativo)",
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Auth",
+      "description": "Cadastro e sessão (login/logout via Auth.js v5)."
+    },
+    {
+      "name": "Categories",
+      "description": "Catálogo de categorias."
+    },
+    {
+      "name": "Occurrences",
+      "description": "Ciclo de vida de uma ocorrência."
+    },
+    {
+      "name": "Uploads",
+      "description": "Upload e leitura de imagens."
+    },
+    {
+      "name": "Dashboard",
+      "description": "Indicadores gerenciais (restrito a GESTOR)."
+    },
+    {
+      "name": "Health",
+      "description": "Health check público."
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "authjs.session-token",
+        "description": "Cookie de sessão do Auth.js (NextAuth v5) — **não é uma API key**. Definido no login via `POST /api/v1/auth/callback/credentials` (fluxo padrão do Auth.js, ver rota `/api/v1/auth/[...nextauth]`). Em produção (HTTPS) o navegador recebe o cookie com o nome `__Secure-authjs.session-token` em vez deste."
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Sem sessão ativa — cookie de sessão ausente ou expirado.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "ForbiddenError": {
+        "description": "Autenticado, mas sem permissão para esta ação.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Recurso inexistente — ou existente mas fora do escopo de quem pergunta (ver nota de 404 uniforme nas rotas de ocorrência: \"não existe\" e \"existe mas não é seu\" são deliberadamente indistinguíveis).",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "ConflictError": {
+        "description": "Conflito com o estado atual do recurso (ex.: e-mail já cadastrado).",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Payload sintaticamente inválido (`ZodError`, 422 com `errors`) ou semanticamente recusado pela regra de negócio (ex.: transição de status exige campo obrigatório).",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI estável identificando o tipo de erro."
+          },
+          "title": {
+            "type": "string",
+            "description": "Resumo curto e estável do tipo de erro."
+          },
+          "status": {
+            "type": "integer",
+            "description": "Status HTTP, repetido no corpo."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explicação legível específica desta ocorrência do erro."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": ["path", "message"]
+            },
+            "description": "Presente apenas quando o erro vem de `ZodError` (payload que não passou na validação do schema) — um item por campo inválido."
+          }
+        },
+        "required": ["type", "title", "status"]
+      },
+      "AuthenticateUserInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "minLength": 1,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "Role": {
+        "type": "string",
+        "enum": ["SOLICITANTE", "GESTOR"]
+      },
+      "PublicUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": ["id", "name", "email", "role"]
+      },
+      "CategorySummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "slug"]
+      },
+      "OccurrenceStatus": {
+        "type": "string",
+        "enum": ["ABERTA", "EM_ANALISE", "EM_ATENDIMENTO", "RESOLVIDA", "CANCELADA"]
+      },
+      "Priority": {
+        "type": "string",
+        "enum": ["BAIXA", "MEDIA", "ALTA", "URGENTE"]
+      },
+      "OccurrenceListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OccurrenceStatus"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "createdById": {
+            "type": "string"
+          },
+          "assignedToId": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "title",
+          "status",
+          "priority",
+          "categoryId",
+          "categoryName",
+          "locationLabel",
+          "createdById",
+          "assignedToId",
+          "createdAt"
+        ]
+      },
+      "ListOccurrencesResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccurrenceListItem"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          }
+        },
+        "required": ["data", "total", "page", "pageSize"]
+      },
+      "OccurrenceRecord": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "example": "OC-2026-000123"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OccurrenceStatus"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "categoryId": {
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": ["number", "null"],
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": ["number", "null"],
+            "minimum": -180,
+            "maximum": 180
+          },
+          "imageUrl": {
+            "type": ["string", "null"],
+            "description": "Derivada de `imageKey` pelo storage ativo; null se não houver."
+          },
+          "imageKey": {
+            "type": ["string", "null"]
+          },
+          "createdById": {
+            "type": "string"
+          },
+          "assignedToId": {
+            "type": ["string", "null"]
+          },
+          "assignedToName": {
+            "type": ["string", "null"]
+          },
+          "resolutionNote": {
+            "type": ["string", "null"]
+          },
+          "resolvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "title",
+          "description",
+          "status",
+          "priority",
+          "categoryId",
+          "categoryName",
+          "locationLabel",
+          "latitude",
+          "longitude",
+          "imageUrl",
+          "imageKey",
+          "createdById",
+          "assignedToId",
+          "assignedToName",
+          "resolutionNote",
+          "resolvedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "StatusHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromStatus": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OccurrenceStatus"
+              },
+              {
+                "type": ["string", "null"],
+                "description": "null na entrada de criação (não houve status anterior)."
+              }
+            ]
+          },
+          "toStatus": {
+            "$ref": "#/components/schemas/OccurrenceStatus"
+          },
+          "note": {
+            "type": ["string", "null"]
+          },
+          "changedById": {
+            "type": "string"
+          },
+          "changedByName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "fromStatus",
+          "toStatus",
+          "note",
+          "changedById",
+          "changedByName",
+          "createdAt"
+        ]
+      },
+      "CommentEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "occurrenceId": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "authorName": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "occurrenceId", "authorId", "authorName", "body", "createdAt"]
+      },
+      "RatingEntry": {
+        "type": ["object", "null"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "score", "comment", "createdAt"]
+      },
+      "OccurrenceDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/OccurrenceRecord"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "history": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/StatusHistoryEntry"
+                }
+              },
+              "comments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CommentEntry"
+                }
+              },
+              "rating": {
+                "$ref": "#/components/schemas/RatingEntry"
+              }
+            },
+            "required": ["history", "comments", "rating"]
+          }
+        ]
+      },
+      "StoredFile": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        },
+        "required": ["url", "key"]
+      },
+      "DashboardMetrics": {
+        "type": "object",
+        "properties": {
+          "totalByStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "$ref": "#/components/schemas/OccurrenceStatus"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": ["status", "count"]
+            }
+          },
+          "totalByCategory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "categoryName": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": ["categoryId", "categoryName", "count"]
+            }
+          },
+          "totalByPriority": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "priority": {
+                  "$ref": "#/components/schemas/Priority"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": ["priority", "count"]
+            }
+          },
+          "overdueCount": {
+            "type": "integer"
+          },
+          "overdueDays": {
+            "type": "integer"
+          },
+          "averageResolutionHours": {
+            "type": ["number", "null"],
+            "description": "null quando nenhuma ocorrência foi resolvida ainda."
+          },
+          "timeSeries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "description": "YYYY-MM-DD, UTC.",
+                  "example": "2026-01-31"
+                },
+                "opened": {
+                  "type": "integer"
+                },
+                "resolved": {
+                  "type": "integer"
+                }
+              },
+              "required": ["date", "opened", "resolved"]
+            }
+          },
+          "topResponsibles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "userId": {
+                  "type": "string"
+                },
+                "userName": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                }
+              },
+              "required": ["userId", "userName", "count"]
+            }
+          },
+          "averageRating": {
+            "type": ["number", "null"],
+            "description": "null quando nenhuma avaliação existe ainda."
+          }
+        },
+        "required": [
+          "totalByStatus",
+          "totalByCategory",
+          "totalByPriority",
+          "overdueCount",
+          "overdueDays",
+          "averageResolutionHours",
+          "timeSeries",
+          "topResponsibles",
+          "averageRating"
+        ]
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok"]
+          },
+          "db": {
+            "type": "string",
+            "enum": ["up"]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["status", "db", "timestamp"]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "operationId": "registerUser",
+        "tags": ["Auth"],
+        "summary": "Cadastro público de usuário",
+        "description": "Cria um usuário com papel sempre `SOLICITANTE` — quem promove a `GESTOR` é o banco/administração, nunca esta rota. E-mail duplicado → 409.",
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "pattern": "^(?=.*[A-Za-zÀ-ÿ])(?=.*\\d).+$"
+                  }
+                },
+                "required": ["name", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicUser"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/{nextauthAction}": {
+      "get": {
+        "operationId": "authJsCatchAllGet",
+        "tags": ["Auth"],
+        "summary": "Endpoints do Auth.js (gerenciados pelo Auth.js v5)",
+        "description": "Catch-all servido inteiramente pelo Auth.js v5 (`handlers` de `NextAuth(...)`, `src/auth.ts`) — sessão (`session`), CSRF (`csrf`), provedores (`providers`), início de login (`signin`), callback de login (`callback/credentials`) e logout (`signout`). Este projeto não redige um schema de request/response para essas ações — são contrato do próprio Auth.js, não deste time. Documentado aqui só para não faltar na lista de rotas: método real e corpo variam por ação, ver a documentação do Auth.js v5. Público: `session`/`csrf`/`providers`/`signin` não exigem sessão prévia (é justamente como se obtém uma).",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "nextauthAction",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resposta específica da ação do Auth.js — formato definido por ele, não por este contrato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "authJsCatchAllPost",
+        "tags": ["Auth"],
+        "summary": "Endpoints do Auth.js (gerenciados pelo Auth.js v5)",
+        "description": "Ver `GET /api/v1/auth/{nextauthAction}` — mesmo catch-all, verbo POST (ex.: `signin`, `signout`). Em `callback/credentials` (o efetivo \"login\"), o corpo esperado é o formato de `AuthenticateUserInput` abaixo (`email`, `password`).",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "nextauthAction",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthenticateUserInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resposta específica da ação do Auth.js — formato definido por ele, não por este contrato.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "tags": ["Categories"],
+        "summary": "Lista categorias ativas",
+        "description": "Catálogo ordenado por nome. Qualquer usuário autenticado pode listar.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catálogo de categorias ativas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CategorySummary"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences": {
+      "get": {
+        "operationId": "listOccurrences",
+        "tags": ["Occurrences"],
+        "summary": "Lista ocorrências (filtros, ordenação, paginação)",
+        "description": "`GESTOR` vê todas; `SOLICITANTE` vê apenas as próprias — recorte aplicado pelo use-case, não um filtro que o cliente possa desativar.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["ABERTA", "EM_ANALISE", "EM_ATENDIMENTO", "RESOLVIDA", "CANCELADA"]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "categoryId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["BAIXA", "MEDIA", "ALTA", "URGENTE"]
+            },
+            "required": false,
+            "name": "priority",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": false,
+            "name": "assignedToId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["createdAt", "priority", "status"],
+              "default": "createdAt"
+            },
+            "required": false,
+            "name": "sortBy",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"],
+              "default": "desc"
+            },
+            "required": false,
+            "name": "sortOrder",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de resultados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOccurrencesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createOccurrence",
+        "tags": ["Occurrences"],
+        "summary": "Cria uma ocorrência",
+        "description": "Qualquer usuário autenticado pode criar. `status` inicial sempre `ABERTA`, `priority` inicial sempre `MEDIA` — fixados pelo servidor, não recebidos do cliente. `imageKey` (não `imageUrl`) é o único campo de imagem aceito, ver `createOccurrenceSchema`. 404 quando `categoryId` não existe ou aponta para categoria inativa.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "locationLabel": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "latitude": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "imageKey": {
+                    "type": "string"
+                  }
+                },
+                "required": ["title", "description", "categoryId", "locationLabel"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ocorrência criada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{id}": {
+      "get": {
+        "operationId": "getOccurrence",
+        "tags": ["Occurrences"],
+        "summary": "Detalhe de uma ocorrência",
+        "description": "Inclui histórico, comentários e avaliação. Ocorrência inexistente e ocorrência de outra pessoa (para um `SOLICITANTE`) chegam como o mesmo 404 — de propósito, para não confirmar por enumeração de ID que uma ocorrência de outro usuário existe.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detalhe completo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateOccurrenceManagement",
+        "tags": ["Occurrences"],
+        "summary": "Gestão de uma ocorrência (prioridade e/ou responsável)",
+        "description": "Restrito a `GESTOR` (`canChangePriority`/`canAssignResponsible`). Não é uma transição de status — isso é `POST .../status`. Pelo menos um dos dois campos precisa vir no corpo (`updateOccurrenceManagementSchema.refine`); os dois juntos disparam duas chamadas em sequência.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "type": "string",
+                    "enum": ["BAIXA", "MEDIA", "ALTA", "URGENTE"]
+                  },
+                  "assignedToId": {
+                    "type": ["string", "null"],
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ocorrência atualizada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{id}/status": {
+      "post": {
+        "operationId": "changeOccurrenceStatus",
+        "tags": ["Occurrences"],
+        "summary": "Muda o status de uma ocorrência",
+        "description": "Aplica a máquina de estados de `domain/transitions.ts`. `200`, não `201`: é atualização de um recurso existente. `note` é obrigatório para cancelar; `resolutionNote` é obrigatório para resolver — a ausência vira 422, não 409.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "toStatus": {
+                    "type": "string",
+                    "enum": ["ABERTA", "EM_ANALISE", "EM_ATENDIMENTO", "RESOLVIDA", "CANCELADA"]
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "resolutionNote": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["toStatus"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status alterado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceRecord"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{id}/history": {
+      "get": {
+        "operationId": "getOccurrenceHistory",
+        "tags": ["Occurrences"],
+        "summary": "Linha do tempo (histórico de status) de uma ocorrência",
+        "description": "Recorte de `GET /occurrences/{id}` — só o array `history`, mesma autorização.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Histórico em ordem cronológica crescente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StatusHistoryEntry"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{id}/comments": {
+      "post": {
+        "operationId": "addComment",
+        "tags": ["Occurrences"],
+        "summary": "Adiciona um comentário a uma ocorrência",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["body"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comentário criado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentEntry"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/occurrences/{id}/rating": {
+      "post": {
+        "operationId": "rateOccurrence",
+        "tags": ["Occurrences"],
+        "summary": "Avalia uma ocorrência resolvida",
+        "description": "Só o autor da ocorrência, e só quando `status === RESOLVIDA`. `201`, não `200`: cria um recurso novo (a avaliação). Autor de outra pessoa → mesmo 404 uniforme; `status` não é `RESOLVIDA` ou já foi avaliada → 409.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ID (cuid) da ocorrência.",
+              "example": "clx1a2b3c4d5e6f7g8h9"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "score": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["score"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Avaliação registrada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/RatingEntry"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/uploads": {
+      "post": {
+        "operationId": "uploadImage",
+        "tags": ["Uploads"],
+        "summary": "Envia uma imagem (upload)",
+        "description": "Multipart com um campo `file`. O formato é decidido pelos *magic bytes* do conteúdo (JPEG/PNG/WebP), nunca pelo `Content-Type` declarado — arquivo vazio ou de outro formato vira 422. Limite de 5 MB (413 acima disso). Devolve a `key` a passar em `imageKey` na criação da ocorrência — nunca uma URL diretamente.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Arquivo de imagem (JPEG, PNG ou WebP), até 5 MB."
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Arquivo salvo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoredFile"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "413": {
+            "description": "Arquivo maior que o limite de 5 MB.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/{key}": {
+      "get": {
+        "operationId": "getUploadedFile",
+        "tags": ["Uploads"],
+        "summary": "Serve um arquivo do storage local",
+        "description": "Só relevante em desenvolvimento/Docker (storage local) — em produção o Vercel Blob serve a imagem direto pela URL pública que ele mesmo devolve, sem passar por esta rota. `key` segue o padrão `^[a-f0-9-]+\\.(jpg|jpeg|png|webp)$`; qualquer chave fora desse padrão (tentativa de path traversal incluída) e qualquer arquivo inexistente devolvem o mesmo 404.",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conteúdo binário da imagem — `Content-Type` reflete a extensão da chave.",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/metrics": {
+      "get": {
+        "operationId": "getDashboardMetrics",
+        "tags": ["Dashboard"],
+        "summary": "Indicadores gerenciais",
+        "description": "Restrito a `GESTOR` (`requireRole`). `overdueDays` é opcional (default 7).",
+        "security": [
+          {
+            "sessionCookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365,
+              "default": 7
+            },
+            "required": false,
+            "name": "overdueDays",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indicadores agregados.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardMetrics"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Público — usado por um smoke test após o container subir. Toca o schema real (`SELECT 1 FROM \"User\" LIMIT 1`), não só a conexão. Sem parâmetros e sem corpo — não há caminho de erro do cliente (4xx); a única falha possível é do lado do servidor (503).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Aplicação e banco disponíveis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Banco de dados inacessível ou sem o schema esperado.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

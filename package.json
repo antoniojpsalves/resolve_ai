@@ -22,7 +22,8 @@
     "db:migrate:test": "sh -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DATABASE_URL_TEST\" DIRECT_DATABASE_URL=\"$DATABASE_URL_TEST\" prisma migrate deploy'",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "openapi:generate": "tsx scripts/generate-openapi.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
