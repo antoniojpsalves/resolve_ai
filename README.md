@@ -161,14 +161,36 @@ job `e2e` do workflow já builda explicitamente antes de rodar os testes.
 
 Ver `.env.example` para o conjunto completo. Resumo:
 
-| Variável                | Descrição                                                         |
-| ----------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`          | String de conexão do Postgres principal (usada pela app/Prisma)   |
-| `DATABASE_URL_TEST`     | String de conexão do Postgres de testes (`db-test`)               |
-| `AUTH_SECRET`           | Segredo do NextAuth (gere com `openssl rand -base64 32`)          |
-| `AUTH_URL`              | URL base da aplicação para o NextAuth                             |
-| `NEXT_PUBLIC_APP_NAME`  | Nome público da aplicação, exposto ao client                      |
-| `BLOB_READ_WRITE_TOKEN` | Opcional. Ver "Upload de imagem" abaixo — ausente = storage local |
+| Variável                | Descrição                                                                                                         |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | String de conexão do Postgres principal (usada pela app/Prisma)                                                   |
+| `DATABASE_URL_TEST`     | String de conexão do Postgres de testes (`db-test`)                                                               |
+| `DIRECT_DATABASE_URL`   | Conexão direta (sem pooling) usada só pela Prisma CLI para migrar — ver "Conexão pooled vs. direta (Neon)" abaixo |
+| `AUTH_SECRET`           | Segredo do NextAuth (gere com `openssl rand -base64 32`)                                                          |
+| `AUTH_URL`              | URL base da aplicação para o NextAuth (opcional/desnecessária na Vercel — ver seção de deploy)                    |
+| `NEXT_PUBLIC_APP_NAME`  | Nome público da aplicação, exposto ao client                                                                      |
+| `BLOB_READ_WRITE_TOKEN` | Opcional. Ver "Upload de imagem" abaixo — ausente = storage local                                                 |
+
+### Conexão pooled vs. direta (Neon)
+
+O Prisma CLI (`migrate deploy`, `migrate dev`, `db push`) usa `directUrl` do
+`datasource` em `prisma/schema.prisma` quando declarada, em vez de `url` — a
+aplicação em runtime (o Client, instanciado em `src/core/db/prisma.ts`)
+sempre usa `url` (`DATABASE_URL`), nunca `directUrl`. Isso existe por causa
+da Vercel: a integração Vercel↔Neon injeta uma `DATABASE_URL` **pooled** (via
+PgBouncer) por padrão — a Prisma recomenda não rodar `migrate deploy` sobre
+uma conexão pooled (o lock consultivo de migração pode falhar/comportar-se
+mal via PgBouncer). Em produção, `DIRECT_DATABASE_URL` deve apontar para a
+conexão **direta** que a integração Neon expõe (o nome exato da variável que
+a Neon injeta varia — confirme no painel "Storage" do projeto na Vercel ao
+conectar; ver checklist de deploy abaixo).
+
+Em todo ambiente sem pooling (dev local, `db-test`, CI) não há distinção
+entre "direto" e "pooled" — `DIRECT_DATABASE_URL` aponta para o mesmo valor
+de `DATABASE_URL` (`.env.example`, `docker-compose.yml` e os três jobs de
+`.github/workflows/ci.yml` já fazem isso). O Prisma **exige**
+`DIRECT_DATABASE_URL` resolvida sempre que `directUrl` está declarada no
+schema, mesmo nesses ambientes — sem isso, qualquer comando Prisma quebra.
 
 `.env.example`/`.env` usam `localhost` em `DATABASE_URL`/`DATABASE_URL_TEST`
 porque é o valor correto para quem roda `npm run dev` no host (as portas do

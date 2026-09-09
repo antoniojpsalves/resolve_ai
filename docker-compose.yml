@@ -52,6 +52,9 @@ services:
     environment:
       DATABASE_URL: postgresql://resolve:resolve@db:5432/resolve_ai?schema=public
       DATABASE_URL_TEST: postgresql://resolve:resolve@db-test:5432/resolve_ai_test?schema=public
+      # Sem pooling neste ambiente (ver .env.example) — mesmo valor de DATABASE_URL,
+      # exigido pelo Prisma CLI por causa do `directUrl` em prisma/schema.prisma.
+      DIRECT_DATABASE_URL: postgresql://resolve:resolve@db:5432/resolve_ai?schema=public
     depends_on:
       db:
         condition: service_healthy

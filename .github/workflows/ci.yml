@@ -58,6 +58,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_test?schema=public
+      # Sem pooling neste ambiente — mesmo valor de DATABASE_URL, exigido pelo
+      # Prisma CLI por causa do `directUrl` em prisma/schema.prisma.
+      DIRECT_DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_test?schema=public
       AUTH_SECRET: ci-test-secret-nao-usar-em-producao
 
     steps:
@@ -106,6 +109,9 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_e2e?schema=public
+      # Sem pooling neste ambiente — mesmo valor de DATABASE_URL, exigido pelo
+      # Prisma CLI por causa do `directUrl` em prisma/schema.prisma.
+      DIRECT_DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_e2e?schema=public
       AUTH_SECRET: ci-e2e-secret-nao-usar-em-producao
 
     steps:
@@ -174,6 +180,9 @@ jobs:
         run: npx prisma migrate deploy
         env:
           DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_docker?schema=public
+          # Sem pooling neste ambiente — mesmo valor de DATABASE_URL, exigido
+          # pelo Prisma CLI por causa do `directUrl` em prisma/schema.prisma.
+          DIRECT_DATABASE_URL: postgresql://resolve:resolve@localhost:5432/resolve_ai_docker?schema=public
 
       - name: Build da imagem
         run: docker build -t resolve_ai:ci .

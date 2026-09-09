@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "dev:docker": "docker compose up --build",
     "db:migrate": "prisma migrate dev",
-    "db:migrate:test": "sh -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DATABASE_URL_TEST\" prisma migrate deploy'",
+    "db:migrate:test": "sh -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DATABASE_URL_TEST\" DIRECT_DATABASE_URL=\"$DATABASE_URL_TEST\" prisma migrate deploy'",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio"
