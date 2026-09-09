@@ -370,6 +370,12 @@ dados reais de usuários.
 ### Checklist final — conectar Vercel + Neon + Blob
 
 1. Importar o repositório GitHub como um novo projeto na Vercel.
+   **A Vercel já dispara um build automático neste momento**, antes de
+   qualquer variável de ambiente existir — como o `buildCommand` roda
+   `prisma migrate deploy` antes de tudo, esse primeiro build **vai
+   falhar** por falta de `DATABASE_URL`/`DIRECT_DATABASE_URL`. Isso é
+   esperado, não é um erro de configuração: ignore essa falha e continue
+   os passos abaixo; o próximo deploy (passo 8) já sai correto.
 2. Na aba **Storage** do projeto, conectar um **Postgres via a integração
    Neon** — isso injeta `DATABASE_URL` (pooled) automaticamente.
 3. Ainda na aba **Storage**, conectar um **Blob store** — isso injeta
@@ -387,6 +393,12 @@ dados reais de usuários.
    só voltar aqui se o login falhar com `UntrustedHost` depois do deploy.
 7. (Opcional) Configurar `NEXT_PUBLIC_APP_NAME` se quiser um nome diferente
    de `"Resolve Aí"`.
+   **Ambiente Preview**: o `vercel.json` não distingue Production de
+   Preview — todo deploy de PR também roda `prisma migrate deploy` no
+   build. Se for usar Preview Deployments, replique `DIRECT_DATABASE_URL`
+   e `AUTH_SECRET` também no ambiente **Preview** (passos 4-5 têm essa
+   opção ao salvar a variável); sem isso, só os builds de Preview falham —
+   produção não é afetada.
 8. Disparar o deploy (`git push` para a branch conectada, ou "Deploy" no
    painel). O `buildCommand` do `vercel.json` roda `prisma migrate deploy`
    antes do `npm run build` — a primeira build já sobe com o schema
