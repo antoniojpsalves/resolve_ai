@@ -18,6 +18,36 @@ ocorrências, com autenticação de usuários e coleta de feedback.
 - **Deploy:** Vercel (aplicação) + Neon (Postgres gerenciado)
   <!-- TODO Dia 5: URL pública -->
 
+## Matriz de rastreabilidade
+
+Régua de "o que o enunciado pede" → "o que existe hoje no repositório", conferida
+linha a linha contra o código nesta tarefa (Dia 5, Tarefa 3) — não é o que foi
+planejado em `docs/PLANO.md`, é o estado real. Nada nesta tabela é considerado
+pronto sem a coluna "onde comprova" apontar para um arquivo/rota real.
+
+| #   | Exigência do enunciado  | Como atendemos                                                                                                                                        | Onde comprova                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Arquitetura de software | Camadas `domain`/`application`/`infra` por módulo; dependency inversion nos repositórios (ports + Prisma na `infra`)                                  | `src/modules/occurrence/{domain,application,infra}/`, `src/modules/identity/{domain,application,infra}/`, `docs/adr/002-postgres-prisma.md`, `docs/adr/004-auth-js-credentials.md`, `docs/adr/005-historico-transacional.md`. Diagrama C4 ainda **não existe** (`docs/arquitetura.md`) — Tarefa 4.                                                                |
+| 2   | Backend                 | Route Handlers do Next.js como camada de transporte só; use-cases isolados; validação Zod colocalizada com o use-case                                 | `src/app/api/v1/**/route.ts` (13 rotas — `find src/app/api -name route.ts`), `src/modules/*/application/*.ts` (schema Zod + use-case no mesmo arquivo, ex. `create-occurrence.ts`)                                                                                                                                                                                |
+| 3   | APIs                    | REST versionada `/api/v1`; contrato OpenAPI 3.1 **gerado** dos schemas Zod já existentes (não escrito à mão) — Tarefa 3, Dia 5                        | `/api/docs` (UI Scalar, `src/app/api/docs/route.ts`) + `openapi.json` (raiz do repo, gerado por `npm run openapi:generate` → `scripts/generate-openapi.ts`) + registro em `src/core/openapi/`. Validado com `@apidevtools/swagger-parser` e `npx @redocly/cli lint` — ver `docs/sdd/dia-05/tarefa-3-relatorio.md` (fora deste repo) para a evidência de execução. |
+| 4   | Banco de dados          | PostgreSQL, migrations versionadas, seed determinístico                                                                                               | `prisma/schema.prisma`, `prisma/migrations/20260904192051_init/`, `prisma/seed.ts`, DER em `docs/der.md`                                                                                                                                                                                                                                                          |
+| 5   | Frontend                | App Router + Server Components; Tailwind + shadcn/ui; responsivo e com varredura automatizada de acessibilidade                                       | `src/app/(app)/**`, `src/app/(auth)/**`, `src/components/ui/**` (shadcn); responsivo — commit `fix(layout): corrige overflow horizontal do header em mobile (375px)`; acessível — `tests/e2e/accessibility.spec.ts` (axe-core, `wcag2a`+`wcag2aa`)                                                                                                                |
+| 6   | Testes                  | Unit (Vitest) + integração de API (Vitest + Postgres real) + e2e (Playwright)                                                                         | `tests/unit/**` (34 arquivos), `tests/integration/**` (5 arquivos, banco Postgres real), `tests/e2e/**` (3 specs) — `npm test` roda 406 testes (todos verdes nesta tarefa); cobertura e `playwright-report/` são publicados como artifact dos jobs `test`/`e2e` do CI (`.github/workflows/ci.yml`), não commitados (`.gitignore`)                                 |
+| 7   | Docker                  | `docker-compose.yml` (Postgres + app + banco de testes, um comando) + `Dockerfile` multi-stage (`output: 'standalone'`) validado no CI                | `docker-compose.yml`, `Dockerfile`, job `docker` de `.github/workflows/ci.yml` (build da imagem + smoke test de `/api/v1/health`, `/` e login sem `500 UntrustedHost`, a cada PR)                                                                                                                                                                                 |
+| 8   | Deploy em Cloud         | Vercel (app) + Neon (Postgres) + Vercel Blob (imagens) — infraestrutura e checklist prontos; deploy real é passo manual do usuário, fora desta sessão | `vercel.json`, seção "Deploy (Vercel + Neon + Blob)" deste README (checklist completo de variáveis e passos). URL pública e preview por PR: **pendente** — depende do usuário conectar o projeto na Vercel                                                                                                                                                        |
+| 9   | Documentação            | README, ADRs, DER, contrato OpenAPI, guia de execução local                                                                                           | `README.md`, `docs/adr/{002,004,005}-*.md`, `docs/der.md`, `/api/docs` + `openapi.json` (item 3). Diagrama de arquitetura (C4) e ADR "Docker vs. Vercel" ainda pendentes — Tarefa 4                                                                                                                                                                               |
+
+**Sobre Docker + Vercel** (o `docs/PLANO.md` original já antecipava que isso precisa
+estar explícito): a Vercel **não executa o `Dockerfile`** deste projeto —
+`vercel.json` (acima) só declara um `buildCommand` (`prisma migrate deploy && npm run
+build`), a Vercel builda com o próprio pipeline do Next.js, sem tocar na imagem
+Docker. O Docker cumpre dois papéis reais e independentes do deploy em si: (a)
+`docker-compose.yml` sobe Postgres + app + banco de testes em um comando — ambiente
+de desenvolvimento local; (b) o `Dockerfile` multi-stage garante portabilidade (a
+mesma imagem funcionaria em Cloud Run/ECS/Render) e é validado por build + smoke test
+a cada PR no job `docker` do CI. Isto vira uma ADR própria ("por que Vercel e não
+container em produção") na Tarefa 4 — aqui só o registro de onde cada peça mora.
+
 ## Pré-requisitos
 
 - Node.js 24+ (ou compatível — ver nota abaixo)
@@ -337,6 +367,13 @@ dados reais de usuários.
 Todas sob `/api/v1`, versão exigida pelo ADR 004. `POST`/`GET` sem detalhe adicional na
 tabela seguem o padrão do projeto: corpo/erro em `application/problem+json`, sessão via
 cookie do NextAuth quando marcada como autenticada.
+
+> **Contrato completo e sempre atualizado:** a tabela abaixo é um resumo de leitura
+> rápida (não relista rotas adicionadas depois, como `POST .../status`,
+> `POST .../rating` e `GET /dashboard/metrics`). Para o contrato de verdade — todas as
+> rotas, parâmetros, corpo de requisição/resposta e erros RFC 7807 — abra `/api/docs`
+> (gerado a partir dos schemas Zod, ver item 3 da matriz de rastreabilidade acima) ou
+> leia `openapi.json` na raiz do repositório.
 
 | Rota                                | Método | Autenticado | Descrição                                                    |
 | ----------------------------------- | ------ | ----------- | ------------------------------------------------------------ |
