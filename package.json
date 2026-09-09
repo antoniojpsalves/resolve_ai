@@ -28,8 +28,10 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@hookform/resolvers": "^5.9.1",
     "@prisma/client": "6.19.3",
+    "@scalar/nextjs-api-reference": "^0.11.18",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -47,6 +49,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.0.0",
     "@axe-core/playwright": "^4.13.0",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.62.1",
