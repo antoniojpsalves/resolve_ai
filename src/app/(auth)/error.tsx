@@ -33,8 +33,8 @@ export default function AuthError({
           <h1>Algo deu errado</h1>
         </CardTitle>
         <CardDescription>
-          Não foi possível carregar esta página. Isso pode ter sido um problema temporário —
-          tente novamente em instantes.
+          Não foi possível carregar esta página. Isso pode ter sido um problema temporário — tente
+          novamente em instantes.
         </CardDescription>
       </CardHeader>
       <CardContent>
