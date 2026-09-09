@@ -224,6 +224,112 @@ responde `500`, sem nenhuma pista de que a causa é uma variável de ambiente
 ausente. Antes de qualquer deploy de produção, confirme que um Blob store
 está conectado ao projeto na Vercel.
 
+## Deploy (Vercel + Neon + Blob)
+
+Fluxo: importar o repositório GitHub na Vercel, provisionar um Postgres pela
+integração nativa Vercel↔Neon (aba "Storage" do projeto) e provisionar um
+Vercel Blob store. A integração injeta `DATABASE_URL` e
+`BLOB_READ_WRITE_TOKEN` automaticamente — **mas não aplica migrations nem
+popula dados sozinha**. `vercel.json` (`buildCommand`) cobre as migrations a
+cada build; o resto deste checklist é manual, uma vez.
+
+### Checklist de variáveis de ambiente na Vercel
+
+| Variável                | Origem em produção                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | **Automática** — injetada pela integração Vercel↔Neon (conexão pooled, via PgBouncer)                                                                                                                                                                                                                                                                    |
+| `DIRECT_DATABASE_URL`   | **Manual** — copiar da conexão _direta_ (sem pooling) que a integração Neon expõe. O nome exato da variável que a Neon disponibiliza varia (frequentemente algo como `DATABASE_URL_UNPOOLED` ou similar) — confirme no painel "Storage" do projeto na Vercel ao conectar e copie o valor para `DIRECT_DATABASE_URL` nas Environment Variables do projeto |
+| `BLOB_READ_WRITE_TOKEN` | **Automática** — injetada pela integração Vercel Blob                                                                                                                                                                                                                                                                                                    |
+| `AUTH_SECRET`           | **Manual** — gerar com `openssl rand -base64 32` e colar no painel (Project Settings → Environment Variables)                                                                                                                                                                                                                                            |
+| `AUTH_URL`              | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                                                                                                   |
+| `AUTH_TRUST_HOST`       | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                                                                                                   |
+| `NEXT_PUBLIC_APP_NAME`  | Manual, opcional — tem default no código (`"Resolve Aí"`), só configure se quiser um nome diferente                                                                                                                                                                                                                                                      |
+
+### Decisão: `AUTH_URL` e `AUTH_TRUST_HOST` na Vercel
+
+Nenhuma das duas precisa ser configurada manualmente na Vercel — confirmado
+lendo `src/auth.config.ts`/`src/auth.ts` (nenhuma referência a
+`AUTH_TRUST_HOST` no código; a checagem de host confiável vem só do próprio
+Auth.js) e a documentação oficial do Auth.js v5 sobre deploy:
+
+- **`AUTH_TRUST_HOST`**: o Auth.js v5 detecta automaticamente a variável de
+  ambiente `VERCEL` (que a própria Vercel injeta em todo deploy) e, quando
+  presente, já assume o host como confiável — equivalente a
+  `AUTH_TRUST_HOST=true` sem precisar declarar nada. Isso é diferente do
+  Docker Compose/CI deste projeto (job `docker` do `ci.yml`), onde
+  `AUTH_TRUST_HOST=true` **precisa** ser setado manualmente porque não há
+  detecção automática de plataforma nesse ambiente (ver comentário no
+  próprio `ci.yml` sobre o `UntrustedHost`).
+- **`AUTH_URL`**: a documentação do Auth.js v5 descreve esta variável como
+  "majoritariamente desnecessária" a partir da v5 — o host é inferido dos
+  headers da própria requisição. Só é preciso declará-la para casos como um
+  `basePath` de auth atrás de um domínio/subpath diferente do padrão, o que
+  não é o caso deste projeto (`basePath: '/api/v1/auth'` já é relativo à
+  origem do próprio deploy).
+
+Se o login apresentar `UntrustedHost` em produção mesmo assim (por exemplo,
+domínio customizado com alguma configuração de proxy atípica), o primeiro
+passo é configurar `AUTH_TRUST_HOST=true` manualmente no painel — mas isso
+não é esperado no fluxo padrão Vercel-nativo descrito aqui.
+
+### Seed de produção — passo manual, único (nunca automatizado)
+
+**Não é rodado automaticamente em nenhum ponto do deploy.**
+`prisma/seed.ts` começa limpando as tabelas (`deleteMany()`) antes de
+recriar os dados de demonstração — rodar isso a cada build/deploy da Vercel
+apagaria dados reais assim que o produto tivesse o primeiro uso real. Por
+isso o `buildCommand` do `vercel.json` só roda `prisma migrate deploy`,
+nunca `prisma db seed`.
+
+Depois que o primeiro deploy com o schema já migrado estiver de pé, rode o
+seed manualmente, uma única vez, com a `DATABASE_URL` de produção exportada
+temporariamente no shell local (nunca commitada em arquivo nenhum):
+
+```bash
+DATABASE_URL="<DATABASE_URL de produção, copiada do painel da Vercel>" \
+DIRECT_DATABASE_URL="<mesma URL, ou a conexão direta — ver checklist acima>" \
+npx prisma db seed
+```
+
+**Aviso:** rodar este comando de novo **apaga e recria** todos os dados
+(por causa do `deleteMany()` no início do script) — é seguro rodar contra um
+banco vazio ou só de demonstração, mas **nunca** contra produção já com
+dados reais de usuários.
+
+### Checklist final — conectar Vercel + Neon + Blob
+
+1. Importar o repositório GitHub como um novo projeto na Vercel.
+2. Na aba **Storage** do projeto, conectar um **Postgres via a integração
+   Neon** — isso injeta `DATABASE_URL` (pooled) automaticamente.
+3. Ainda na aba **Storage**, conectar um **Blob store** — isso injeta
+   `BLOB_READ_WRITE_TOKEN` automaticamente.
+4. Abrir o painel da integração Neon (ou o dashboard da Neon diretamente) e
+   copiar a variável de conexão **direta/sem pooling** (nome exato a
+   confirmar no painel — algo como `DATABASE_URL_UNPOOLED` ou similar).
+   Colar esse valor em **Project Settings → Environment Variables** como
+   `DIRECT_DATABASE_URL` (Production, e Preview se for usar preview
+   deployments com banco real).
+5. Gerar o segredo do NextAuth: `openssl rand -base64 32`. Colar em
+   **Project Settings → Environment Variables** como `AUTH_SECRET`
+   (Production).
+6. **Não** configurar `AUTH_URL` nem `AUTH_TRUST_HOST` (ver decisão acima) —
+   só voltar aqui se o login falhar com `UntrustedHost` depois do deploy.
+7. (Opcional) Configurar `NEXT_PUBLIC_APP_NAME` se quiser um nome diferente
+   de `"Resolve Aí"`.
+8. Disparar o deploy (`git push` para a branch conectada, ou "Deploy" no
+   painel). O `buildCommand` do `vercel.json` roda `prisma migrate deploy`
+   antes do `npm run build` — a primeira build já sobe com o schema
+   aplicado no Neon.
+9. Conferir que o deploy ficou saudável: abrir `/api/v1/health` da URL de
+   produção e confirmar `{"status":"ok"}`.
+10. Rodar o seed de produção **uma única vez**, manualmente, com o comando
+    da seção acima (usuários/categorias/ocorrências de demonstração).
+11. Testar o login com um dos usuários do seed (ex.: `gestor1@resolveai.com`
+    / `Senha@123`) e confirmar que a sessão persiste e o dashboard carrega.
+12. Testar um upload de imagem numa ocorrência nova, para confirmar que o
+    Blob store está conectado corretamente (sem isso, o upload responde
+    `500` — ver "Upload de imagem" acima).
+
 ## Rotas da API
 
 Todas sob `/api/v1`, versão exigida pelo ADR 004. `POST`/`GET` sem detalhe adicional na
