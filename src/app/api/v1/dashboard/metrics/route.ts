@@ -7,8 +7,8 @@ import {
 import { prismaDashboardRepository } from '@/modules/occurrence/infra/prisma-dashboard-repository';
 
 /**
- * `GET /api/v1/dashboard/metrics` — indicadores gerenciais do dashboard
- * (`docs/PLANO.md`, seção 5). Restrita a `GESTOR`: sem sessão → 401, papel
+ * `GET /api/v1/dashboard/metrics` — indicadores gerenciais do dashboard.
+ * Restrita a `GESTOR`: sem sessão → 401, papel
  * diferente de `GESTOR` → 403 (`requireRole`, não `requireRoleOrRedirect` —
  * esta é uma API route, não uma página).
  *

@@ -37,7 +37,7 @@ esquecimento:
 - a dist-tag `latest` do registry aponta hoje para **`8.0.0-rc.13`**, que é um _release
   candidate_ — instalar `prisma@latest` colocaria um RC em produção;
 - o último estável de verdade é **`7.10.0`**, uma major acima da que usamos;
-- migrar para a linha 7 no Dia 1 não é uma troca de número de versão. A major 7 remove
+- migrar para a linha 7 agora não é uma troca de número de versão. A major 7 remove
   `datasource.url` do `schema.prisma`, exige um arquivo `prisma.config.ts` e passa a
   depender de um _driver adapter_ explícito (`@prisma/adapter-pg` + `pg`) para conectar.
   Isso reescreveria a configuração do banco, do seed e do CI logo no dia da fundação,
@@ -79,7 +79,7 @@ produção (tipos, concorrência, `ILIKE`, agregações) e enfraqueceria o valor
 
 - **Defasagem de versão assumida.** Ficamos duas majors atrás do que o registry considera
   `latest`. Enquanto isso durar, não recebemos correções da linha 7. Aceito conscientemente
-  em troca de estabilidade no Dia 1.
+  em troca de estabilidade na fundação do projeto.
 - **Aviso de deprecação do bloco `prisma` no `package.json`.** O comando `prisma db seed`
   lê a configuração do bloco `"prisma": { "seed": "tsx prisma/seed.ts" }`, que o Prisma 6
   já marca como deprecado em favor de `prisma.config.ts`. Não migramos porque, na linha 6,
@@ -88,8 +88,8 @@ produção (tipos, concorrência, `ILIKE`, agregações) e enfraqueceria o valor
   A dívida é conhecida, aceita e se resolve junto com a migração para a major 7.
 - O Prisma Client precisa ser gerado (`npx prisma generate`) após `npm ci`; o CI executa
   esse passo explicitamente no job `quality`.
-- O engine binário do Prisma pesa na imagem Docker; o Dia 4 deve tratar isso no build
-  multi-stage.
+- O engine binário do Prisma pesa na imagem Docker; o build multi-stage de produção
+  deve tratar isso.
 
 ### `npm audit`: 5 vulnerabilidades conhecidas, fix automático não aplicado
 

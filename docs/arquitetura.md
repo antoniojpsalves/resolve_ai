@@ -101,7 +101,7 @@ flowchart TB
 
 **Leitura do diagrama:**
 
-- **Direção da dependência (a regra de ouro, `docs/PLANO.md` seção 2.2):** `domain/` não
+- **Direção da dependência — a regra de ouro da arquitetura:** `domain/` não
   importa nada de fora — nem Next, nem Prisma, nem Zod. É por isso que a máquina de
   estados (`canTransition`, `TRANSITIONS`) e as regras de permissão são testáveis em
   milissegundos, sem banco nem servidor HTTP (ver ADR 001, seção "Consequências

@@ -37,7 +37,7 @@ describe('detectImageFormat', () => {
   });
 
   it('rejeita conteúdo de texto puro, mesmo que o nome/Content-Type minta sobre o formato', () => {
-    // Este é o caso central do brief: um .php ou .txt renomeado para .png,
+    // Este é o caso central: um .php ou .txt renomeado para .png,
     // enviado com Content-Type: image/png, tem que ser rejeitado — a
     // detecção olha só para o conteúdo real, nunca para metadados alheios.
     const fakePng = new TextEncoder().encode('<?php echo "não sou uma imagem"; ?>');

@@ -1,8 +1,7 @@
 # Roteiro de apresentação — Resolve Aí
 
 Roteiro prático para uma demonstração/vídeo de poucos minutos, seguindo a matriz de
-rastreabilidade (seção 1 do `docs/PLANO.md` / seção "Matriz de rastreabilidade" do
-`README.md`) como estrutura — uma seção por linha da matriz, agrupando linhas
+rastreabilidade (seção "Matriz de rastreabilidade" do `README.md`) como estrutura — uma seção por linha da matriz, agrupando linhas
 relacionadas quando faz sentido mostrar juntas. Para cada ponto: **o que mostrar** (tela/
 URL específica), **o que dizer** (2–3 frases-guia, não um script palavra por palavra) e
 **tempo sugerido**. Soma total: **≈ 9–11 minutos** — ajustável cortando as seções
@@ -157,8 +156,8 @@ responder `{"status":"ok"}`), fazer login com um usuário de seed e navegar por 
 para provar que está no ar de verdade, não só que builda.
 
 **Se o deploy real ainda não foi feito** (estado no momento em que este roteiro foi
-escrito): dizer isso explicitamente, sem maquiar — "o deploy em si é o próximo passo,
-manual, fora desta sessão de trabalho" — e mostrar em vez disso:
+escrito): dizer isso explicitamente, sem maquiar — "o deploy em si é o próximo passo e
+depende de uma ação manual no painel da Vercel" — e mostrar em vez disso:
 
 - O job `docker` do CI verde (já mostrado na seção 5) como prova de que a aplicação
   builda e roda de ponta a ponta.

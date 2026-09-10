@@ -1,7 +1,7 @@
 # ADR 006 — Vercel (não o container Docker) em produção
 
 - **Status:** aceita
-- **Data:** 2026-09-09 (Dia 5, Tarefa 4)
+- **Data:** 2026-09-09
 
 ## Contexto
 
@@ -59,16 +59,16 @@ pronta e validada no CI — tecnicamente viável hoje sem trabalho adicional de 
 Rejeitada para este projeto por três motivos concretos: (a) não há integração nativa com
 Neon/Vercel Blob — cada uma precisaria ser conectada manualmente via variável de
 ambiente/IAM, mais um provisionamento a configurar num prazo de 5 dias; (b) preview
-deployment por PR (que a matriz de rastreabilidade, item `#8`, e o `docs/PLANO.md`
-pedem) não existe de forma automática — exigiria um workflow de CI próprio para criar/
-destruir revisões por PR, reimplementando o que a integração Git da Vercel já faz; (c)
+deployment por PR (que a matriz de rastreabilidade, item `#8`, pede) não existe de
+forma automática — exigiria um workflow de CI próprio para criar/destruir revisões por
+PR, reimplementando o que a integração Git da Vercel já faz; (c)
 HTTPS, domínio e CDN de assets exigiriam configuração adicional (Cloud Load Balancer/
 Cloud CDN) que a Vercel já resolve por padrão.
 
 **Deploy do container em ECS/Fargate (AWS).** Mesma portabilidade de Cloud Run, com
 ainda mais peças para configurar antes do primeiro deploy (VPC, task definition,
 service, load balancer, IAM roles) — o tipo de trabalho de infraestrutura que compete
-diretamente com o tempo do Dia 5 dedicado a documentação e polimento. Rejeitada pelo
+diretamente com o tempo dedicado a documentação e polimento. Rejeitada pelo
 mesmo motivo de prazo, de forma ainda mais acentuada.
 
 **Deploy do container em Render.** O mais próximo em simplicidade da Vercel entre as
@@ -122,10 +122,9 @@ não ganhar nada em troca.
   os dois pipelines fazem essencialmente a mesma sequência (`prisma generate` →
   `migrate deploy` → `next build`), então o risco de divergência é baixo, mas não é
   verificado automaticamente por nenhum teste.
-- **Free tier do Neon tem cold start.** A mesma ressalva que `docs/PLANO.md` (seção 11,
-  riscos) já registrava para o ambiente de desenvolvimento vale também para produção no
-  free tier: a primeira requisição depois de um período de inatividade paga uma
-  latência extra para o banco "acordar". Mitigação hoje: nenhuma automatizada — fica
+- **Free tier do Neon tem cold start.** A ressalva já conhecida para o ambiente de
+  desenvolvimento vale também para produção no free tier: a primeira requisição depois
+  de um período de inatividade paga uma latência extra para o banco "acordar". Mitigação hoje: nenhuma automatizada — fica
   registrado como conhecido, não como resolvido.
 - **A prova de portabilidade do Docker nunca é exercitada com o Postgres real de
   produção (Neon)** — o smoke test do job `docker` sobe contra um Postgres efêmero do

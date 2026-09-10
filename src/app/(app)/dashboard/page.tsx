@@ -37,8 +37,8 @@ export const metadata = {
 };
 
 /**
- * Consulta usada para montar a lista de "ocorrências críticas" (Parte C do
- * brief): sem endpoint dedicado, reusa `listOccurrences` já existente,
+ * Consulta usada para montar a lista de "ocorrências críticas": sem endpoint
+ * dedicado, reusa `listOccurrences` já existente,
  * ordenado por prioridade desc (a implementação Prisma usa a ordem nativa do
  * enum `Priority`, então `desc` traz `URGENTE` primeiro — ver comentário em
  * `list-occurrences.ts`). Sem filtro de `status`: a query não suporta múltiplos

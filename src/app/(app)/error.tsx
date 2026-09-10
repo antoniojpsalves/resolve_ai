@@ -15,8 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
  * Propositalmente não exibe `error.message`/stack ao usuário — só loga no
  * console (client) para não vazar detalhe técnico/interno na tela. Em
  * produção, esse `console.error` também é onde uma ferramenta de
- * observabilidade (Sentry etc.) se pluga, se um dia for adicionada; não é
- * escopo desta tarefa.
+ * observabilidade (Sentry etc.) se pluga, se um dia for adicionada.
  */
 export default function AppError({
   error,

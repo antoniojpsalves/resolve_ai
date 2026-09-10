@@ -10,7 +10,7 @@ quem abriu, quem mudou o quê e quando. A tabela `StatusHistory` carrega isso, c
 entrada por transição de status (`fromStatus` → `toStatus`).
 
 Duas decisões de segurança e consistência de dados surgiram ao implementar
-`POST /occurrences` e `GET /occurrences/:id` no Dia 2, e nenhuma das duas era óbvia o
+`POST /occurrences` e `GET /occurrences/:id`, e nenhuma das duas era óbvia o
 suficiente para se justificar sozinha num comentário de código sem que a próxima pessoa
 a questionasse:
 
@@ -98,6 +98,6 @@ zero é seguro.
   seria. Mitigação: a regra de autorização está isolada e testada em
   `domain/permissions.ts` e `get-occurrence.test.ts`, cobrindo os dois casos que
   precisam colapsar na mesma resposta.
-- **`GET /occurrences/:id/history` não existe ainda** (fora de escopo do Dia 2, decisão
-  do Dia 3) — quando existir, precisa da mesma checagem de `canViewOccurrence` e do mesmo
-  404 uniforme, ou reabre a mesma questão de enumeração por outra rota.
+- **`GET /occurrences/:id/history` não existe ainda** — quando existir, precisa da mesma
+  checagem de `canViewOccurrence` e do mesmo 404 uniforme, ou reabre a mesma questão de
+  enumeração por outra rota.

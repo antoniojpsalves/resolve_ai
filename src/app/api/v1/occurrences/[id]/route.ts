@@ -32,7 +32,7 @@ export const GET = route(async (_request: Request, { params }: RouteContext) => 
 /**
  * `PATCH /api/v1/occurrences/[id]` — gestão de uma ocorrência pelo gestor:
  * mudar `priority` e/ou atribuir/desatribuir `assignedToId`. Não é uma
- * transição de status (isso é `POST .../status`, Tarefa 1) — os dois campos
+ * transição de status (isso é `POST .../status`) — os dois campos
  * são independentes um do outro e cada um dispara seu próprio use-case
  * (`updateOccurrencePriority`/`assignOccurrenceResponsible`), por isso não há
  * um único schema "PATCH" no sentido de um único use-case.

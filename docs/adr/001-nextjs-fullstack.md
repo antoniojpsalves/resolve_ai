@@ -1,15 +1,12 @@
 # ADR 001 — Next.js fullstack, não Next.js + NestJS separado
 
 - **Status:** aceita
-- **Data:** 2026-09-04 (Dia 1 — decisão retroativa, formalizada como ADR no Dia 5, Tarefa
-  4; a decisão em si é a primeira do projeto, anterior ao primeiro commit)
+- **Data:** 2026-09-04 (decisão anterior ao primeiro commit; formalizada como ADR
+  posteriormente)
 
-> **Nota sobre esta ADR ser retroativa:** as ADRs 002, 004 e 005 foram escritas no mesmo
-> dia em que a decisão que documentam foi tomada. Esta e a ADR 003 não — a numeração
-> 001/003 ficou reservada desde o `docs/PLANO.md` (seção 2.1) mas nunca virou arquivo
-> próprio até a Tarefa 4 do Dia 5. O conteúdo abaixo formaliza uma decisão que já estava
-> em vigor desde a primeira linha de código; não é uma mudança de rumo nem uma decisão
-> nova.
+> **Nota:** esta ADR e a 003 formalizam decisões que já estavam em vigor desde a primeira
+> linha de código — a numeração ficou reservada desde o início e só depois virou arquivo
+> próprio. O conteúdo abaixo não é uma mudança de rumo nem uma decisão nova.
 
 ## Contexto
 
@@ -27,9 +24,9 @@ Duas formas de organizar front-end e back-end estavam na mesa antes do primeiro 
    comunicação via HTTP entre eles, cada um com seu próprio pipeline de build/deploy.
 
 A pergunta que decide entre as duas não é "qual framework de backend é melhor" — é
-"o que a banca está avaliando quando fala em arquitetura". O enunciado cobra separação
-de responsabilidades e testabilidade, não contagem de processos ou de repositórios.
-Nenhuma parte do desafio exige um consumidor de API diferente do próprio front-end (não
+"o que o enunciado cobra quando fala em arquitetura": separação de responsabilidades e
+testabilidade, não contagem de processos ou de repositórios. Nenhuma parte do desafio
+exige um consumidor de API diferente do próprio front-end (não
 há app mobile nem um segundo cliente), o que é o cenário em que dois serviços separados
 pagaria pelo próprio benefício (times diferentes, ciclos de deploy independentes,
 escalabilidade horizontal desacoplada do front).
@@ -71,10 +68,11 @@ dois serviços não se paga em 5 dias com um único desenvolvedor, e o critério
 
 **Next.js + rotas de API "soltas" (sem camadas internas).** A opção mais rápida de
 todas — Route Handlers chamando o Prisma direto, sem `domain/`/`application/`/`infra/`.
-Rejeitada porque devolveria exatamente o problema que a banca avalia: nenhuma
-testabilidade de unidade (a máquina de estados dependeria de banco para ser testada),
+Rejeitada porque devolveria exatamente o problema que a exigência de arquitetura existe
+para evitar: nenhuma testabilidade de unidade (a máquina de estados dependeria de banco
+para ser testada),
 nenhuma fronteira de responsabilidade visível no código, e um refactor para introduzir
-camadas depois do MVP custaria mais do que introduzi-las desde o Dia 1.
+camadas depois do MVP custaria mais do que introduzi-las desde o início.
 
 **BFF (Backend for Frontend) separado do domínio.** Um meio-termo — um serviço fino de
 composição na frente de um "core" — que faz sentido quando há múltiplos front-ends

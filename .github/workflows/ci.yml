@@ -192,7 +192,7 @@ jobs:
           # AUTH_TRUST_HOST=true: fora de uma plataforma com detecção automática de
           # host confiável (Vercel, etc.), Auth.js v5 recusa qualquer rota de auth
           # com 500 UntrustedHost sem isso — confirmado ao vivo com exatamente estas
-          # env vars (ver docs/sdd/dia-04/tarefa-4-review.md e fix-wave-relatorio.md).
+          # env vars.
           # AUTH_URL não é necessário: com AUTH_TRUST_HOST=true, o login funciona de
           # ponta a ponta (CSRF, callback de credenciais e sessão) mesmo sem AUTH_URL.
           docker run -d --name resolve_ai_ci --network host \
@@ -226,8 +226,8 @@ jobs:
           # Este job não semeia o Postgres (só roda migrations — ver step acima),
           # então não há usuário real para logar. O objetivo aqui não é validar a
           # jornada de login completa (isso já é coberto pelo job `e2e`, com banco
-          # semeado), e sim travar a regressão específica encontrada nesta onda de
-          # correção: sem AUTH_TRUST_HOST, toda rota de auth responde 500
+          # semeado), e sim travar uma regressão específica já observada: sem
+          # AUTH_TRUST_HOST, toda rota de auth responde 500
           # (UntrustedHost) antes mesmo de checar credenciais. Com o host confiável
           # configurado, o fluxo CSRF -> callback de credenciais funciona
           # normalmente e credenciais inexistentes resultam em 302 (redirect para

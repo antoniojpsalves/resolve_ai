@@ -112,9 +112,9 @@ export function canTransition(
     return { allowed: false, reason: missingField };
   }
 
-  // EM_ANALISE -> EM_ATENDIMENTO: o plano recomenda ter um responsável
-  // atribuído, mas é recomendação, não regra — a checagem de `assignedToId`
-  // é deliberadamente ausente aqui.
+  // EM_ANALISE -> EM_ATENDIMENTO: ter um responsável atribuído é
+  // recomendável, mas não é regra — a checagem de `assignedToId` é
+  // deliberadamente ausente aqui.
 
   return { allowed: true };
 }

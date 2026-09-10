@@ -17,7 +17,7 @@ export interface GetDashboardMetricsDeps {
 }
 
 /**
- * Devolve os indicadores gerenciais do dashboard (`docs/PLANO.md`, seção 5).
+ * Devolve os indicadores gerenciais do dashboard.
  * Sem lógica de negócio própria além do repasse: nenhum recorte por ator (a
  * visão é sempre a mesma, gerencial, para qualquer `GESTOR`) — a checagem de
  * papel é responsabilidade da rota (`requireRole('GESTOR')`), não deste

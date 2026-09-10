@@ -3,16 +3,16 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * Varredura automatizada de acessibilidade (axe-core) nas telas principais —
- * Dia 5, Tarefa 1, Parte D. Decisão de manter isto na suíte permanente (não
+ * Varredura automatizada de acessibilidade (axe-core) nas telas principais.
+ * Decisão de manter isto na suíte permanente (não
  * só como verificação pontual): o custo é baixo (poucos segundos, roda no
  * mesmo `webServer` já usado por `journeys.spec.ts`) e captura regressões de
  * acessibilidade automaticamente (contraste, label ausente, `aria-*`
  * inválido) que review manual pode deixar passar.
  *
  * Escopo do axe: `wcag2a` + `wcag2aa` (label, contraste, estrutura de
- * heading/landmark, nome acessível) — não roda as regras `best-practice`
- * (mais subjetivas/ruidosas, fora do que a Parte D pediu).
+ * heading/landmark, nome acessível) — não roda as regras `best-practice`,
+ * mais subjetivas/ruidosas e fora do que o WCAG exige.
  *
  * Credenciais reaproveitadas de `journeys.spec.ts` (seed de
  * `prisma/seed.ts`) — mesmo par gestor/solicitante, mesmo motivo de não

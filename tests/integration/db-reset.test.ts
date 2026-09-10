@@ -6,7 +6,7 @@ import { resetDatabase } from './helpers/db';
 import { createFixtureUser } from './helpers/fixtures';
 
 /**
- * Valida a infra de teste de integração em si (Parte A do brief): o
+ * Valida a infra de teste de integração em si: o
  * redirecionamento de `DATABASE_URL` via `tests/integration/setup.ts` está
  * ativo (senão `resetDatabase()` recusaria rodar, ver guarda abaixo), o
  * `beforeEach` limpa o banco entre casos (sem vazamento) e a guarda contra

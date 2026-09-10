@@ -25,9 +25,8 @@ export interface ChangeOccurrenceStatusDeps {
 }
 
 /**
- * Tabela de mapeamento `TransitionDenial` → `AppError`, já decidida (ver
- * brief da tarefa — não é para reinventar aqui). Mensagens curtas e diretas,
- * o `detail` de cada erro completa o contexto.
+ * Tabela de mapeamento `TransitionDenial` → `AppError`. Mensagens curtas e
+ * diretas, o `detail` de cada erro completa o contexto.
  */
 function errorForDenial(reason: TransitionDenial): Error {
   switch (reason) {
@@ -54,7 +53,7 @@ function errorForDenial(reason: TransitionDenial): Error {
 
 /**
  * Muda o status de uma ocorrência, aplicando a máquina de estados de
- * `domain/transitions.ts` (`canTransition`, congelada nesta tarefa).
+ * `domain/transitions.ts` (`canTransition`).
  *
  * Autorização em duas camadas, igual `getOccurrence`/`addComment`:
  *  1. `canViewOccurrence` primeiro — ocorrência inexistente OU que o ator nem

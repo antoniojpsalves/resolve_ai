@@ -36,9 +36,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               {/*
                * <sm: só o ícone (texto vira `sr-only`, permanece no nome
                * acessível do link) — a partir de `sm:`, ícone + texto.
-               * Evita o overflow horizontal do header em 375px descoberto
-               * no Dia 4 (nav com 2 links + badge + botão de sair não cabem
-               * por extenso nessa largura, ver `docs/sdd/dia-05/tarefa-1-relatorio.md`).
+               * Evita o overflow horizontal do header em 375px (nav com 2
+               * links + badge + botão de sair não cabem por extenso nessa
+               * largura).
                */}
               <Link
                 href="/ocorrencias"

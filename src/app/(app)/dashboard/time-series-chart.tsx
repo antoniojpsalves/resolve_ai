@@ -24,9 +24,9 @@ const RESOLVED_COLOR = '#16a34a'; // green-600 — mesma família de RESOLVIDA
  * componente de hora. `formatDate` faz `new Date('2026-09-08')` (meia-noite
  * UTC) e depois aplica `timeZone: 'America/Sao_Paulo'` (UTC-3): o resultado
  * recua 3 horas e vira `2026-09-07T21:00`, exibindo "07/09" em vez de
- * "08/09" — um bug de off-by-one confirmado antes de escrever este
- * formulário (ver relatório da Tarefa 2). Este formatador dedicado só
- * recorta os componentes da string, sem `Date` nem fuso horário nenhum.
+ * "08/09" — um bug de off-by-one confirmado empiricamente antes de escrever
+ * este formatador. Ele só recorta os componentes da string, sem `Date` nem
+ * fuso horário nenhum.
  */
 function formatAxisDate(isoDate: string): string {
   const [, month, day] = isoDate.split('-');

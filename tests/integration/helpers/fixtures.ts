@@ -8,12 +8,12 @@ import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
 
 /**
  * Fixtures mínimas para testes de integração (Postgres real via
- * `tests/integration/helpers/db.ts`), usadas por esta tarefa e pensadas para
- * reuso pelas Tarefas 2 e 3 do dia (também vão escrever testes de integração
- * sobre ocorrência/usuário/categoria). Não usa `prisma/seed.ts` de propósito —
- * seed é para dados de demonstração, não fixture determinística de teste.
+ * `tests/integration/helpers/db.ts`), compartilhadas por todos os testes de
+ * integração sobre ocorrência/usuário/categoria. Não usa `prisma/seed.ts` de
+ * propósito — seed é para dados de demonstração, não fixture determinística de
+ * teste.
  *
- * Nenhuma senha real é necessária aqui: os testes desta tarefa constroem o
+ * Nenhuma senha real é necessária aqui: esses testes constroem o
  * `Actor` à mão em vez de autenticar via NextAuth (ver
  * `tests/integration/occurrences-status.test.ts`), então `passwordHash` é só
  * um placeholder óbvio, nunca comparado por `verifyPassword`.

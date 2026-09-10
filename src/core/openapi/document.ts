@@ -6,7 +6,7 @@ import { buildOpenApiRegistry } from './registry';
  * Gera o documento OpenAPI 3.1 completo a partir do registro
  * (`buildOpenApiRegistry`).
  *
- * **Decisão de onde/quando gerar** (brief da Tarefa 3, Dia 5): esta função é
+ * **Decisão de onde/quando gerar**: esta função é
  * a única fonte de verdade, chamada em dois lugares que não podem divergir
  * entre si porque os dois chamam exatamente esta função:
  *

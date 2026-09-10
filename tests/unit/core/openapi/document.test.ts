@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { generateOpenApiDocument } from '@/core/openapi/document';
 
 /**
- * Guarda de regressão do contrato OpenAPI (Tarefa 3, Dia 5): não reimplementa
+ * Guarda de regressão do contrato OpenAPI: não reimplementa
  * o gerador, só garante que ele continua produzindo um documento válido e
  * continua cobrindo todas as rotas reais do projeto — se uma rota nova for
  * criada em `src/app/api/**` e esquecida aqui, ou se um `registerPath`

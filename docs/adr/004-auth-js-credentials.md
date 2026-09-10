@@ -112,6 +112,6 @@ declarativo do Next 15, e não oferece `basePath` configurável do jeito que pre
 - **Não há rate limiting.** Nem em `POST /api/v1/auth/register`, nem em
   `POST /api/v1/auth/callback/credentials`. Hoje nada impede força bruta de senha ou
   criação em massa de contas: o custo do bcrypt (cost 10, ~58 ms) atrasa um atacante, mas
-  não é um limite. Fora do escopo do Dia 1, mas **pendência obrigatória antes do deploy do
-  Dia 4** — deve entrar junto com a configuração de produção, provavelmente como limite por
-  IP + por e-mail no middleware ou numa camada à frente da aplicação.
+  não é um limite. Fora do escopo do MVP inicial, mas **pendência obrigatória antes do
+  deploy de produção** — deve entrar junto com a configuração de produção, provavelmente
+  como limite por IP + por e-mail no middleware ou numa camada à frente da aplicação.

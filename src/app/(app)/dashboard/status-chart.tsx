@@ -20,7 +20,7 @@ import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
  * (hex/CSS). Cores próximas da mesma família semântica de
  * `statusBadgeClassName` (azul/âmbar/índigo/verde/vermelho, ver
  * `src/lib/occurrences/status.ts`); não precisa ser pixel-idêntico ao
- * Tailwind, só reconhecível como a mesma cor (brief da Tarefa 2, Parte D).
+ * Tailwind, só reconhecível como a mesma cor.
  */
 const STATUS_CHART_COLORS: Record<OccurrenceStatus, string> = {
   ABERTA: '#2563eb', // blue-600

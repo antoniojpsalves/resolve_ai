@@ -89,7 +89,7 @@ describe('PATCH /api/v1/occurrences/[id] (integração)', () => {
     expect(response.status).toBe(404);
   });
 
-  it('404 quando assignedToId aponta para um SOLICITANTE, não um GESTOR (regra nova desta tarefa)', async () => {
+  it('404 quando assignedToId aponta para um SOLICITANTE, não um GESTOR', async () => {
     const category = await createFixtureCategory();
     const solicitante = await createFixtureUser({ role: 'SOLICITANTE' });
     const gestor = await createFixtureUser({ role: 'GESTOR' });

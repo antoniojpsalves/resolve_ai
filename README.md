@@ -34,25 +34,23 @@ demonstração quanto para navegar o produto rapidamente sem ler código.
 ## Matriz de rastreabilidade
 
 Régua de "o que o enunciado pede" → "o que existe hoje no repositório", conferida
-linha a linha contra o código no Dia 5 (Tarefa 3 preencheu a matriz; a Tarefa 4 fechou
-os itens 1 e 9, que a Tarefa 3 havia deixado como pendentes) — não é o que foi
-planejado em `docs/PLANO.md`, é o estado real. Nada nesta tabela é considerado
-pronto sem a coluna "onde comprova" apontar para um arquivo/rota real.
+linha a linha contra o código — não é o que foi planejado, é o estado real. Nada
+nesta tabela é considerado pronto sem a coluna "onde comprova" apontar para um
+arquivo/rota real.
 
-| #   | Exigência do enunciado  | Como atendemos                                                                                                                                        | Onde comprova                                                                                                                                                                                                                                                                                                                                                     |
-| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Arquitetura de software | Camadas `domain`/`application`/`infra` por módulo; dependency inversion nos repositórios (ports + Prisma na `infra`)                                  | `src/modules/occurrence/{domain,application,infra}/`, `src/modules/identity/{domain,application,infra}/`, `docs/adr/001` a `006` (ver seção "Arquitetura" abaixo). Diagrama C4 (contexto/container + camadas) em [`docs/arquitetura.md`](./docs/arquitetura.md), renderizado e conferido — Tarefa 4, Dia 5.                                                       |
-| 2   | Backend                 | Route Handlers do Next.js como camada de transporte só; use-cases isolados; validação Zod colocalizada com o use-case                                 | `src/app/api/v1/**/route.ts` (13 rotas — `find src/app/api -name route.ts`), `src/modules/*/application/*.ts` (schema Zod + use-case no mesmo arquivo, ex. `create-occurrence.ts`)                                                                                                                                                                                |
-| 3   | APIs                    | REST versionada `/api/v1`; contrato OpenAPI 3.1 **gerado** dos schemas Zod já existentes (não escrito à mão) — Tarefa 3, Dia 5                        | `/api/docs` (UI Scalar, `src/app/api/docs/route.ts`) + `openapi.json` (raiz do repo, gerado por `npm run openapi:generate` → `scripts/generate-openapi.ts`) + registro em `src/core/openapi/`. Validado com `@apidevtools/swagger-parser` e `npx @redocly/cli lint` — ver `docs/sdd/dia-05/tarefa-3-relatorio.md` (fora deste repo) para a evidência de execução. |
-| 4   | Banco de dados          | PostgreSQL, migrations versionadas, seed determinístico                                                                                               | `prisma/schema.prisma`, `prisma/migrations/20260904192051_init/`, `prisma/seed.ts`, DER em `docs/der.md`                                                                                                                                                                                                                                                          |
-| 5   | Frontend                | App Router + Server Components; Tailwind + shadcn/ui; responsivo e com varredura automatizada de acessibilidade                                       | `src/app/(app)/**`, `src/app/(auth)/**`, `src/components/ui/**` (shadcn); responsivo — commit `fix(layout): corrige overflow horizontal do header em mobile (375px)`; acessível — `tests/e2e/accessibility.spec.ts` (axe-core, `wcag2a`+`wcag2aa`)                                                                                                                |
-| 6   | Testes                  | Unit (Vitest) + integração de API (Vitest + Postgres real) + e2e (Playwright)                                                                         | `tests/unit/**` (34 arquivos), `tests/integration/**` (5 arquivos, banco Postgres real), `tests/e2e/**` (3 specs) — `npm test` roda 406 testes (todos verdes nesta tarefa); cobertura e `playwright-report/` são publicados como artifact dos jobs `test`/`e2e` do CI (`.github/workflows/ci.yml`), não commitados (`.gitignore`)                                 |
-| 7   | Docker                  | `docker-compose.yml` (Postgres + app + banco de testes, um comando) + `Dockerfile` multi-stage (`output: 'standalone'`) validado no CI                | `docker-compose.yml`, `Dockerfile`, job `docker` de `.github/workflows/ci.yml` (build da imagem + smoke test de `/api/v1/health`, `/` e login sem `500 UntrustedHost`, a cada PR)                                                                                                                                                                                 |
-| 8   | Deploy em Cloud         | Vercel (app) + Neon (Postgres) + Vercel Blob (imagens) — infraestrutura e checklist prontos; deploy real é passo manual do usuário, fora desta sessão | `vercel.json`, seção "Deploy (Vercel + Neon + Blob)" deste README (checklist completo de variáveis e passos). URL pública e preview por PR: **pendente** — depende do usuário conectar o projeto na Vercel                                                                                                                                                        |
-| 9   | Documentação            | README, ADRs (001 a 006, sem buraco na numeração), DER, diagrama C4, contrato OpenAPI, guia de execução local, roteiro de apresentação                | `README.md`, `docs/adr/001` a `006-*.md`, `docs/arquitetura.md`, `docs/der.md`, `/api/docs` + `openapi.json` (item 3), `docs/apresentacao.md`                                                                                                                                                                                                                     |
+| #   | Exigência do enunciado  | Como atendemos                                                                                                                                       | Onde comprova                                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Arquitetura de software | Camadas `domain`/`application`/`infra` por módulo; dependency inversion nos repositórios (ports + Prisma na `infra`)                                 | `src/modules/occurrence/{domain,application,infra}/`, `src/modules/identity/{domain,application,infra}/`, `docs/adr/001` a `006` (ver seção "Arquitetura" abaixo). Diagrama C4 (contexto/container + camadas) em [`docs/arquitetura.md`](./docs/arquitetura.md), renderizado e conferido.                            |
+| 2   | Backend                 | Route Handlers do Next.js como camada de transporte só; use-cases isolados; validação Zod colocalizada com o use-case                                | `src/app/api/v1/**/route.ts` (13 rotas — `find src/app/api -name route.ts`), `src/modules/*/application/*.ts` (schema Zod + use-case no mesmo arquivo, ex. `create-occurrence.ts`)                                                                                                                                   |
+| 3   | APIs                    | REST versionada `/api/v1`; contrato OpenAPI 3.1 **gerado** dos schemas Zod já existentes (não escrito à mão)                                         | `/api/docs` (UI Scalar, `src/app/api/docs/route.ts`) + `openapi.json` (raiz do repo, gerado por `npm run openapi:generate` → `scripts/generate-openapi.ts`) + registro em `src/core/openapi/`. Validado com `@apidevtools/swagger-parser` e `npx @redocly/cli lint`.                                                 |
+| 4   | Banco de dados          | PostgreSQL, migrations versionadas, seed determinístico                                                                                              | `prisma/schema.prisma`, `prisma/migrations/20260904192051_init/`, `prisma/seed.ts`, DER em `docs/der.md`                                                                                                                                                                                                             |
+| 5   | Frontend                | App Router + Server Components; Tailwind + shadcn/ui; responsivo e com varredura automatizada de acessibilidade                                      | `src/app/(app)/**`, `src/app/(auth)/**`, `src/components/ui/**` (shadcn); responsivo — commit `fix(layout): corrige overflow horizontal do header em mobile (375px)`; acessível — `tests/e2e/accessibility.spec.ts` (axe-core, `wcag2a`+`wcag2aa`)                                                                   |
+| 6   | Testes                  | Unit (Vitest) + integração de API (Vitest + Postgres real) + e2e (Playwright)                                                                        | `tests/unit/**` (34 arquivos), `tests/integration/**` (5 arquivos, banco Postgres real), `tests/e2e/**` (3 specs) — `npm test` roda 406 testes (todos verdes); cobertura e `playwright-report/` são publicados como artifact dos jobs `test`/`e2e` do CI (`.github/workflows/ci.yml`), não commitados (`.gitignore`) |
+| 7   | Docker                  | `docker-compose.yml` (Postgres + app + banco de testes, um comando) + `Dockerfile` multi-stage (`output: 'standalone'`) validado no CI               | `docker-compose.yml`, `Dockerfile`, job `docker` de `.github/workflows/ci.yml` (build da imagem + smoke test de `/api/v1/health`, `/` e login sem `500 UntrustedHost`, a cada PR)                                                                                                                                    |
+| 8   | Deploy em Cloud         | Vercel (app) + Neon (Postgres) + Vercel Blob (imagens) — infraestrutura e checklist prontos; o deploy em si é um passo manual do dono do repositório | `vercel.json`, seção "Deploy (Vercel + Neon + Blob)" deste README (checklist completo de variáveis e passos). URL pública e preview por PR: **pendente** — depende do usuário conectar o projeto na Vercel                                                                                                           |
+| 9   | Documentação            | README, ADRs (001 a 006, sem buraco na numeração), DER, diagrama C4, contrato OpenAPI, guia de execução local, roteiro de apresentação               | `README.md`, `docs/adr/001` a `006-*.md`, `docs/arquitetura.md`, `docs/der.md`, `/api/docs` + `openapi.json` (item 3), `docs/apresentacao.md`                                                                                                                                                                        |
 
-**Sobre Docker + Vercel** (o `docs/PLANO.md` original já antecipava que isso precisa
-estar explícito): a Vercel **não executa o `Dockerfile`** deste projeto —
+**Sobre Docker + Vercel**: a Vercel **não executa o `Dockerfile`** deste projeto —
 `vercel.json` (acima) só declara um `buildCommand` (`prisma migrate deploy && npm run
 build`), a Vercel builda com o próprio pipeline do Next.js, sem tocar na imagem
 Docker. O Docker cumpre dois papéis reais e independentes do deploy em si: (a)
@@ -314,7 +312,7 @@ cada build; o resto deste checklist é manual, uma vez.
 
 | Variável                | Origem em produção                                                                                                                                                                                                                                                                                                                                       |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | **Automática** — injetada pela integração Vercel↔Neon (conexão pooled, via PgBouncer)                                                                                                                                                                                                                                                                   |
+| `DATABASE_URL`          | **Automática** — injetada pela integração Vercel↔Neon (conexão pooled, via PgBouncer)                                                                                                                                                                                                                                                                    |
 | `DIRECT_DATABASE_URL`   | **Manual** — copiar da conexão _direta_ (sem pooling) que a integração Neon expõe. O nome exato da variável que a Neon disponibiliza varia (frequentemente algo como `DATABASE_URL_UNPOOLED` ou similar) — confirme no painel "Storage" do projeto na Vercel ao conectar e copie o valor para `DIRECT_DATABASE_URL` nas Environment Variables do projeto |
 | `BLOB_READ_WRITE_TOKEN` | **Automática** — injetada pela integração Vercel Blob                                                                                                                                                                                                                                                                                                    |
 | `AUTH_SECRET`           | **Manual** — gerar com `openssl rand -base64 32` e colar no painel (Project Settings → Environment Variables)                                                                                                                                                                                                                                            |
@@ -336,7 +334,7 @@ Auth.js) e a documentação oficial do Auth.js v5 sobre deploy:
   Docker Compose/CI deste projeto (job `docker` do `ci.yml`), onde
   `AUTH_TRUST_HOST=true` **precisa** ser setado manualmente porque não há
   detecção automática de plataforma nesse ambiente (ver comentário no
-  próprio `ci.yml` sobre o `UntrustedHost` do Dia 4).
+  próprio `ci.yml` sobre o `UntrustedHost`).
 - **`AUTH_URL`**: a documentação do Auth.js v5 descreve esta variável como
   "majoritariamente desnecessária" a partir da v5 — o host é inferido dos
   headers da própria requisição. Só é preciso declará-la para casos como um
@@ -425,9 +423,9 @@ Todas sob `/api/v1`, versão exigida pelo ADR 004. Erro sempre em
 `application/problem+json` (RFC 7807); "Autenticado" = exige o cookie de sessão do
 Auth.js (`requireSession`), com o papel entre parênteses quando a rota também exige
 `requireRole` (checado no use-case, não só no Route Handler — ver
-[ADR 001](./docs/adr/001-nextjs-fullstack.md) e `docs/PLANO.md` §2.3). 13 rotas
-distintas, 16 operações (método × rota) — lista completa, conferida linha a linha
-contra `src/core/openapi/registry.ts` nesta tarefa:
+[ADR 001](./docs/adr/001-nextjs-fullstack.md)). 13 rotas distintas, 16 operações
+(método × rota) — lista completa, conferida linha a linha
+contra `src/core/openapi/registry.ts`:
 
 > **Contrato completo e sempre atualizado:** esta tabela é um resumo de leitura rápida.
 > Para o contrato de verdade — parâmetros, corpo de requisição/resposta por status,
@@ -492,9 +490,9 @@ dos 5 dias:** tanto comentário (`CommentEntry`, `addComment`) quanto avaliaçã
 `Occurrence` (ambos são criados, listados e lidos sempre junto com a ocorrência à qual
 pertencem, nunca sozinhos, e a regra "só após `RESOLVIDA`, uma vez por ocorrência" da
 avaliação está em `domain`/`application` de `occurrence/`, não de `feedback/`). O
-`docs/PLANO.md` original previa `feedback/` como o módulo da avaliação; na
-implementação real (Dia 3) ficou mais simples manter os dois agregados-filhos de
-`Occurrence` juntos no mesmo módulo do que dividir por tipo de conteúdo — `feedback/`
+desenho inicial previa `feedback/` como o módulo da avaliação; na implementação real
+ficou mais simples manter os dois agregados-filhos de `Occurrence` juntos no mesmo
+módulo do que dividir por tipo de conteúdo — `feedback/`
 ficou reservado, sem uso, e é candidato a remoção ou a um propósito futuro (ex.: um
 tipo de feedback que não seja sobre uma ocorrência específica), não um objetivo
 pendente desta entrega.
@@ -515,9 +513,9 @@ pendente desta entrega.
 
 **Ainda não publicado.** A infraestrutura e o checklist de deploy (seção "Deploy" acima)
 estão prontos — `vercel.json`, variáveis documentadas, seed de produção com passo a
-passo — mas conectar o repositório à Vercel e executar o deploy é um passo manual do
-usuário, fora desta sessão de trabalho (ver item 8 da matriz de rastreabilidade e o
-relatório da Tarefa 4 em `docs/sdd/dia-05/`). Depois do primeiro deploy real, esta seção
-deve ser atualizada com a URL pública e, se aplicável, um link para o preview de PR.
+passo — mas conectar o repositório à Vercel e provisionar Neon/Blob pelos respectivos
+painéis é um passo manual do dono do repositório (ver item 8 da matriz de
+rastreabilidade). Depois do primeiro deploy real, esta seção deve ser atualizada com a
+URL pública e, se aplicável, um link para o preview de PR.
 Até lá, a evidência de que a aplicação builda e roda de ponta a ponta é o job `docker`
 do CI (build da imagem + smoke test a cada PR) — ver [ADR 006](./docs/adr/006-vercel-nao-docker-producao.md).

@@ -25,8 +25,7 @@ import { rateOccurrenceSchema } from '@/modules/occurrence/application/rate-occu
  * `react-hook-form` precisa de `defaultValues.comment = ''` para manter o
  * `<Textarea>` controlado, mas `comment` é `z.string().trim().min(1).optional()`:
  * aceita a chave *ausente*, rejeita a chave presente e vazia. Sem este ajuste,
- * um usuário que nunca toca no campo "opcional" nunca consegue submeter (ver
- * `docs/sdd/dia-03/fix-wave-brief.md`, Item 1).
+ * um usuário que nunca toca no campo "opcional" nunca consegue submeter.
  *
  * `z.union([literal(''), campo original]).transform(...)` em vez de
  * `z.preprocess`: o `.transform` preserva o tipo de entrada real do campo

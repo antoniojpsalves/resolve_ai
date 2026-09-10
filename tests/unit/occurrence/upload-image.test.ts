@@ -75,7 +75,7 @@ describe('uploadImage', () => {
   });
 
   it('rejeita conteúdo que não bate com nenhum formato aceito — não confia no Content-Type do cliente', async () => {
-    // Simula o caso central do brief: um .php renomeado para .png, enviado
+    // Simula o caso central: um .php renomeado para .png, enviado
     // com Content-Type: image/png. O use-case nem recebe o Content-Type do
     // cliente como entrada — só teria como "confiar" nele se o aceitasse
     // como parâmetro, o que a assinatura de uploadImage não permite. Aqui

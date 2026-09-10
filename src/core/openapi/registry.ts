@@ -31,14 +31,14 @@ import {
 
 /**
  * Registro central do contrato OpenAPI 3.1, gerado a partir dos schemas Zod
- * que já existem em `application/` (Parte A do brief da Tarefa 3, Dia 5).
+ * que já existem em `application/`.
  *
  * Nenhum schema Zod original é modificado aqui — só importado e, quando
  * precisa de metadado (título, exemplo), envolvido com `.openapi(...)`, que
  * devolve um clone (ver comentário em `./zod-extend.ts`).
  *
  * Cobre **todas as rotas reais** do projeto (`find src/app/api -name route.ts`,
- * conferido na Tarefa 3): 12 rotas de negócio + o catch-all do Auth.js.
+ * conferidas uma a uma): 12 rotas de negócio + o catch-all do Auth.js.
  */
 export function buildOpenApiRegistry(): OpenAPIRegistry {
   const registry = new OpenAPIRegistry();

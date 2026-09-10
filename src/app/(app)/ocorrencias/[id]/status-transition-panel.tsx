@@ -32,7 +32,7 @@ import type { OccurrenceStatus } from '@/modules/occurrence/domain/status';
  * chave presente e vazia. Sem este ajuste, nenhum destino consegue ser
  * submetido sem texto — nem os que não exigem nota por regra de negócio
  * (`EM_ANALISE`, `EM_ATENDIMENTO`) — porque os dois campos são validados
- * juntos a cada submit (ver `docs/sdd/dia-03/fix-wave-brief.md`, Item 1). A
+ * juntos a cada submit. A
  * obrigatoriedade de verdade para `CANCELADA`/`RESOLVIDA` continua sendo
  * decidida pelo servidor (`domain/transitions.ts`, `missingRequiredField`) —
  * é exatamente o que o comentário de `isNoteRequired` abaixo já previa.

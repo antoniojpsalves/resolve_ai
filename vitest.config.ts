@@ -19,8 +19,8 @@ export default defineConfig({
     // mesmo Postgres de teste no `beforeEach`, corre risco real de deadlock
     // `40P01`/FK violation entre arquivos concorrentes) e mantém
     // `tests/unit/**` paralelo (não toca banco, sem essa restrição). Troca
-    // de `fileParallelism: false` global — decisão e verificação registradas
-    // em `docs/sdd/dia-03/fix-wave-relatorio.md`.
+    // de `fileParallelism: false` global, que serializaria os testes unitários
+    // sem necessidade.
     projects: [
       {
         extends: true,

@@ -4,9 +4,8 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * As 3 jornadas de negócio exigidas por `docs/PLANO.md` (seção 7), como um
- * único ciclo contínuo — a mesma ocorrência atravessa as três, não 3 casos
- * independentes (decisão registrada no ledger do Dia 4, Tarefa 3):
+ * As três jornadas de negócio exigidas pelo enunciado, como um único ciclo
+ * contínuo — a mesma ocorrência atravessa as três, não 3 casos independentes:
  *
  *   1. Solicitante se cadastra → login automático → abre ocorrência com
  *      imagem → vê protocolo e status `ABERTA`.
@@ -147,7 +146,7 @@ test.describe.serial('Ciclo completo de uma ocorrência', () => {
     await expect(page).toHaveURL(/categoryId=/);
     await expect(page.getByText(occurrenceCode)).toBeVisible();
 
-    // Navegação direta por id (aceitável pelo brief) — evita depender do
+    // Navegação direta por id — evita depender do
     // layout exato do item da lista para localizar o link certo.
     await page.goto(`/ocorrencias/${occurrenceId}`);
     await expect(page.getByText(occurrenceCode).first()).toBeVisible();
@@ -167,8 +166,8 @@ test.describe.serial('Ciclo completo de uma ocorrência', () => {
         break;
       }
     }
-    // Se o seed só tiver um gestor, atribuir a si mesmo não é um problema
-    // (o brief autoriza esse fallback explicitamente).
+    // Se o seed só tiver um gestor, atribuir a si mesmo não é um problema:
+    // o que a jornada valida é a atribuição acontecer, não quem a recebe.
     assigneeName ??= MANAGER_NAME;
     await page.getByRole('option', { name: assigneeName, exact: true }).click();
     await expect(page.getByLabel('Responsável')).toHaveText(assigneeName);
@@ -241,7 +240,7 @@ test.describe.serial('Ciclo completo de uma ocorrência', () => {
     await login(page, MANAGER_EMAIL, MANAGER_PASSWORD);
     await page.goto(`/ocorrencias/${occurrenceId}`);
 
-    // RBAC de leitura (Dia 3): o comentário da avaliação também aparece
+    // RBAC de leitura: o comentário da avaliação também aparece
     // para o gestor.
     await expect(page.getByText(RATING_COMMENT)).toBeVisible();
   });

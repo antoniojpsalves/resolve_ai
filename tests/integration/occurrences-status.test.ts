@@ -12,8 +12,7 @@ import {
 
 /**
  * Teste de integração de `POST /api/v1/occurrences/[id]/status` contra
- * Postgres real (infra da Parte A — `tests/integration/setup.ts` +
- * `resetDatabase()`).
+ * Postgres real (`tests/integration/setup.ts` + `resetDatabase()`).
  *
  * Não existe, na base, nenhum teste de rota que simule sessão via
  * cookie/token HTTP de verdade — o único precedente é

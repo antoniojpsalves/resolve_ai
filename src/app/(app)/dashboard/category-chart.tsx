@@ -13,10 +13,9 @@ interface CategoryChartProps {
 
 /**
  * Barras de `totalByCategory`, ordenadas por `count` desc no cliente antes de
- * renderizar. O backend não garante `orderBy` nesta lista (achado da revisão
- * da Tarefa 1, `docs/sdd/dia-04/tarefa-1-review.md`, item de severidade
- * baixa #1) — sem este sort, a ordem das barras podia "pular" entre
- * refreshes sem nenhuma mudança de dado real.
+ * renderizar. O backend não garante `orderBy` nesta lista — sem este sort, a
+ * ordem das barras podia "pular" entre refreshes sem nenhuma mudança de dado
+ * real.
  */
 export function CategoryChart({ data }: CategoryChartProps) {
   const chartData = [...data].sort((a, b) => b.count - a.count);

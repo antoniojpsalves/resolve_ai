@@ -24,9 +24,9 @@ export interface RateOccurrenceDeps {
 /**
  * Registra a avaliação do solicitante sobre uma ocorrência já resolvida.
  *
- * Autorização em ordem exata (decidida no ledger do projeto, não é para
- * reinventar aqui) — **não** usa `canRateOccurrence` (`domain/permissions.ts`)
- * diretamente: aquela função combina autor + status num único booleano, e
+ * Autorização em ordem exata — **não** usa `canRateOccurrence`
+ * (`domain/permissions.ts`) diretamente: aquela função combina autor + status
+ * num único booleano, e
  * este use-case precisa distinguir os dois casos de negação para responder
  * com o status HTTP certo:
  *

@@ -11,7 +11,7 @@ export const metadata = {
 /**
  * Server Component: a guarda de sessão e o catálogo de categorias vêm direto
  * do use-case (`listCategories`), sem um `fetch` para a própria API — mesma
- * escolha das outras telas desta tarefa (ver `ocorrencias/page.tsx` e
+ * escolha das outras telas do módulo (ver `ocorrencias/page.tsx` e
  * `ocorrencias/[id]/page.tsx`). O formulário em si é Client Component: é onde
  * mora toda a interação (upload, validação, envio).
  */

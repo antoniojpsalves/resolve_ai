@@ -22,7 +22,7 @@ async function totalByStatus(): Promise<StatusCount[]> {
 
   // Preenche todas as chaves de `ALL_STATUSES`, mesmo as com `count: 0` — um
   // status sem nenhuma ocorrência não deveria simplesmente sumir da lista (o
-  // gráfico da Tarefa 2 espera todas as chaves presentes).
+  // gráfico de status espera todas as chaves presentes).
   return ALL_STATUSES.map((status) => ({ status, count: counts.get(status) ?? 0 }));
 }
 

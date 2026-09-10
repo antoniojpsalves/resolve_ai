@@ -256,9 +256,9 @@ export interface OccurrenceRepository {
   /**
    * Atualiza só `assignedToId` — `null` desatribui. Não toca em
    * `status`/`priority`/histórico: atribuir responsável não é uma transição
-   * de status e não gera entrada em `StatusHistory` (o plano não pede isso;
-   * se quiser registrar "quem atribuiu quem" mais tarde, é decisão de um dia
-   * futuro, não desta tarefa).
+   * de status e não gera entrada em `StatusHistory` (não é um requisito hoje;
+   * se quiser registrar "quem atribuiu quem" mais tarde, é uma decisão
+   * futura).
    */
   assignResponsible(occurrenceId: string, userId: string | null): Promise<OccurrenceRecord>;
   /**
