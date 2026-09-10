@@ -19,17 +19,20 @@
     "test:e2e": "playwright test",
     "dev:docker": "docker compose up --build",
     "db:migrate": "prisma migrate dev",
-    "db:migrate:test": "sh -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DATABASE_URL_TEST\" prisma migrate deploy'",
+    "db:migrate:test": "sh -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DATABASE_URL_TEST\" DIRECT_DATABASE_URL=\"$DATABASE_URL_TEST\" prisma migrate deploy'",
     "db:reset": "prisma migrate reset --force",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "openapi:generate": "tsx scripts/generate-openapi.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^7.3.4",
     "@hookform/resolvers": "^5.9.1",
     "@prisma/client": "6.19.3",
+    "@scalar/nextjs-api-reference": "^0.11.18",
     "@vercel/blob": "^2.8.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
@@ -47,6 +50,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.0.0",
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",

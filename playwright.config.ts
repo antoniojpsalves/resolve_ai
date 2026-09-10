@@ -66,6 +66,14 @@ export default defineConfig({
     env: {
       AUTH_SECRET: process.env.AUTH_SECRET ?? DEFAULT_E2E_AUTH_SECRET,
       DATABASE_URL: process.env.DATABASE_URL ?? DEFAULT_E2E_DATABASE_URL,
+      // `next start` roda com NODE_ENV=production, e o Auth.js v5 só confia no
+      // host automaticamente quando detecta uma plataforma conhecida (a
+      // variável `VERCEL`, por exemplo). Fora delas — que é o caso aqui e no
+      // container do job `docker` — toda rota de auth responde
+      // `500 UntrustedHost`, o que quebra o login automático logo após o
+      // cadastro na jornada 1. Local isso passava despercebido porque o `.env`
+      // de desenvolvimento define `AUTH_URL`; em CI não existe `.env`.
+      AUTH_TRUST_HOST: 'true',
     },
   },
 });
