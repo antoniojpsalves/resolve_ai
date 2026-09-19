@@ -306,15 +306,15 @@ cada build; o resto deste checklist é manual, uma vez.
 
 ### Checklist de variáveis de ambiente na Vercel
 
-| Variável                | Origem em produção                                                                                                                                                                                                                                                                                                                                       |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | **Automática** — injetada pela integração Vercel↔Neon (conexão pooled, via PgBouncer)                                                                                                                                                                                                                                                                    |
-| `DIRECT_DATABASE_URL`   | **Manual** — copiar da conexão _direta_ (sem pooling) que a integração Neon expõe. O nome exato da variável que a Neon disponibiliza varia (frequentemente algo como `DATABASE_URL_UNPOOLED` ou similar) — confirme no painel "Storage" do projeto na Vercel ao conectar e copie o valor para `DIRECT_DATABASE_URL` nas Environment Variables do projeto |
-| `BLOB_READ_WRITE_TOKEN` | **Automática** — injetada pela integração Vercel Blob                                                                                                                                                                                                                                                                                                    |
-| `AUTH_SECRET`           | **Manual** — gerar com `openssl rand -base64 32` e colar no painel (Project Settings → Environment Variables)                                                                                                                                                                                                                                            |
-| `AUTH_URL`              | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                                                                                                   |
-| `AUTH_TRUST_HOST`       | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                                                                                                   |
-| `NEXT_PUBLIC_APP_NAME`  | Manual, opcional — tem default no código (`"Resolve Aí"`), só configure se quiser um nome diferente                                                                                                                                                                                                                                                      |
+| Variável                | Origem em produção                                                                                                                                                                                                                                                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | **Automática** — injetada pela integração Vercel↔Neon (conexão pooled, via PgBouncer)                                                                                                                                                                                              |
+| `DIRECT_DATABASE_URL`   | **Automática** — o `buildCommand` do `vercel.json` a deriva de `DATABASE_URL_UNPOOLED` (injetada pela integração Neon) só durante as migrations. Não precisa ser configurada no painel: os valores do Neon são do tipo _Secret_ e não podem ser lidos de volta para serem copiados |
+| `BLOB_READ_WRITE_TOKEN` | **Automática** — injetada pela integração Vercel Blob                                                                                                                                                                                                                              |
+| `AUTH_SECRET`           | **Manual** — gerar com `openssl rand -base64 32` e colar no painel (Project Settings → Environment Variables)                                                                                                                                                                      |
+| `AUTH_URL`              | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                             |
+| `AUTH_TRUST_HOST`       | **Não configurar.** Ver decisão abaixo                                                                                                                                                                                                                                             |
+| `NEXT_PUBLIC_APP_NAME`  | Manual, opcional — tem default no código (`"Resolve Aí"`), só configure se quiser um nome diferente                                                                                                                                                                                |
 
 ### Decisão: `AUTH_URL` e `AUTH_TRUST_HOST` na Vercel
 
@@ -380,12 +380,11 @@ dados reais de usuários.
    Neon** — isso injeta `DATABASE_URL` (pooled) automaticamente.
 3. Ainda na aba **Storage**, conectar um **Blob store** — isso injeta
    `BLOB_READ_WRITE_TOKEN` automaticamente.
-4. Abrir o painel da integração Neon (ou o dashboard da Neon diretamente) e
-   copiar a variável de conexão **direta/sem pooling** (nome exato a
-   confirmar no painel — algo como `DATABASE_URL_UNPOOLED` ou similar).
-   Colar esse valor em **Project Settings → Environment Variables** como
-   `DIRECT_DATABASE_URL` (Production, e Preview se for usar preview
-   deployments com banco real).
+4. Nada a fazer para a conexão de migrations: o `buildCommand` do
+   `vercel.json` deriva `DIRECT_DATABASE_URL` de `DATABASE_URL_UNPOOLED`
+   (injetada pela integração Neon) apenas durante `prisma migrate deploy`.
+   Em runtime a aplicação não precisa dela — o Prisma Client usa só
+   `DATABASE_URL`.
 5. Gerar o segredo do NextAuth: `openssl rand -base64 32`. Colar em
    **Project Settings → Environment Variables** como `AUTH_SECRET`
    (Production).
@@ -395,9 +394,9 @@ dados reais de usuários.
    de `"Resolve Aí"`.
    **Ambiente Preview**: o `vercel.json` não distingue Production de
    Preview — todo deploy de PR também roda `prisma migrate deploy` no
-   build. Se for usar Preview Deployments, replique `DIRECT_DATABASE_URL`
-   e `AUTH_SECRET` também no ambiente **Preview** (passos 4-5 têm essa
-   opção ao salvar a variável); sem isso, só os builds de Preview falham —
+   build. Se for usar Preview Deployments, replique `AUTH_SECRET` também no
+   ambiente **Preview** (o passo 5 tem essa opção ao salvar a variável) e
+   conecte o banco a esse ambiente; sem isso, só os builds de Preview falham —
    produção não é afetada.
 8. Disparar o deploy (`git push` para a branch conectada, ou "Deploy" no
    painel). O `buildCommand` do `vercel.json` roda `prisma migrate deploy`
